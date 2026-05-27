@@ -31,6 +31,7 @@ class _App {
         "English" => const Locale("en"),
         "简体中文" => const Locale("zh", "CN"),
         "繁體中文" => const Locale("zh", "TW"),
+        "日本語" => const Locale("ja", "JP"),
         _ => const Locale("en"),
       };
     }

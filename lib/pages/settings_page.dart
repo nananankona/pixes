@@ -384,6 +384,15 @@ class _SettingsPageState extends State<SettingsPage> {
                           appdata.writeData();
                           StateController.findOrNull(tag: "MyApp")?.update();
                         }),
+                    MenuFlyoutItem(
+                        text: const Text("日本語"),
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["language"] = "日本語";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        }),
                   ])),
         ],
       ),
