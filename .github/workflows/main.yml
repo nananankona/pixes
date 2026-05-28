@@ -84,14 +84,14 @@ jobs:
   #         path: result/
   Build_IOS:
     if: github.event_name == 'release' || github.event.inputs.build_ios == 'true'
-    runs-on: macos-26
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version-file: pubspec.yaml
-      - run: sudo xcode-select --switch /Applications/Xcode_26.4.0.app
+      - run: sudo xcode-select --switch /Applications/Xcode_15.4.app
       - run: flutter pub get
       - name: Build iOS (Release)
         if: github.event.inputs.dev_build != 'true'
@@ -118,6 +118,11 @@ jobs:
           channel: "stable"
           flutter-version-file: pubspec.yaml
           architecture: x64
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'oracle'
+          java-version: '17'
+      # 本番ビルド用: シークレットから証明書を復元
       - name: Decode and install certificate
         if: github.event.inputs.dev_build != 'true'
         env:
@@ -126,10 +131,15 @@ jobs:
         run: |
           echo "$STORE_FILE" | base64 --decode > android/keystore.jks
           echo "$PROPERTY_FILE" > android/key.properties
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'oracle'
-          java-version: '17'
+      # Devビルド用: ダミーのデバッグキーストアとプロパティを作成してエラーを回避
+      - name: Generate debug keystore for Dev build
+        if: github.event.inputs.dev_build == 'true'
+        run: |
+          keytool -genkey -v -keystore android/keystore.jks -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "storePassword=android" > android/key.properties
+          echo "keyPassword=android" >> android/key.properties
+          echo "keyAlias=androiddebugkey" >> android/key.properties
+          echo "storeFile=keystore.jks" >> android/key.properties
       - run: flutter pub get
       - name: Build Android (Release)
         if: github.event.inputs.dev_build != 'true'
@@ -178,7 +188,9 @@ jobs:
           dart run msix:create -p ${{ env.CERTIFICATE_PASSWORD }} --install-certificate false
       - name: build (Dev)
         if: github.event.inputs.dev_build == 'true'
+        shell: bash
         run: |
+          sed -i '/certificate_path:/d' pubspec.yaml
           flutter pub get
           dart run msix:create
       - uses: actions/upload-artifact@v4
