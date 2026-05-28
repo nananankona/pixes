@@ -3,6 +3,10 @@ run-name: Build ALL
 on:
   workflow_dispatch:
     inputs:
+      dev_build:
+        description: Build as Dev (without certificates)
+        type: boolean
+        default: false
       # macOS build disabled: the macOS job frequently exceeds GitHub Actions' job time limit during Flutter builds.
       # build_macos:
       #   description: Build macOS
@@ -89,7 +93,12 @@ jobs:
           flutter-version-file: pubspec.yaml
       - run: sudo xcode-select --switch /Applications/Xcode_26.4.0.app
       - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
+      - name: Build iOS (Release)
+        if: github.event.inputs.dev_build != 'true'
+        run: flutter build ios --release --no-codesign
+      - name: Build iOS (Dev)
+        if: github.event.inputs.dev_build == 'true'
+        run: flutter build ios --debug --no-codesign
       - run: |
           mkdir -p /Users/runner/work/pixes/pixes/build/ios/iphoneos/Payload
           mv /Users/runner/work/pixes/pixes/build/ios/iphoneos/Runner.app /Users/runner/work/pixes/pixes/build/ios/iphoneos/Payload
@@ -110,6 +119,7 @@ jobs:
           flutter-version-file: pubspec.yaml
           architecture: x64
       - name: Decode and install certificate
+        if: github.event.inputs.dev_build != 'true'
         env:
           STORE_FILE: ${{ secrets.ANDROID_KEYSTORE }}
           PROPERTY_FILE: ${{ secrets.ANDROID_KEY_PROPERTIES }}
@@ -121,11 +131,24 @@ jobs:
           distribution: 'oracle'
           java-version: '17'
       - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
+      - name: Build Android (Release)
+        if: github.event.inputs.dev_build != 'true'
+        run: flutter build apk --release
+      - name: Build Android (Dev)
+        if: github.event.inputs.dev_build == 'true'
+        run: flutter build apk --debug
+      - name: Upload APK (Release)
+        if: github.event.inputs.dev_build != 'true'
+        uses: actions/upload-artifact@v4
         with:
           name: apks
           path: build/app/outputs/apk/release
+      - name: Upload APK (Dev)
+        if: github.event.inputs.dev_build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks
+          path: build/app/outputs/apk/debug
   Build_Windows:
     if: github.event_name == 'release' || github.event.inputs.build_windows == 'true'
     runs-on: windows-latest
@@ -140,17 +163,24 @@ jobs:
           flutter-version-file: pubspec.yaml
           architecture: x64
       - name: Decode and install certificate
+        if: github.event.inputs.dev_build != 'true'
         shell: bash
         env:
           STORE_FILE: ${{ secrets.WINDOWS_KEYSTORE }}
         run: |
           echo "$STORE_FILE" | base64 --decode > windows/app.pfx
-      - name: build
+      - name: build (Release)
+        if: github.event.inputs.dev_build != 'true'
         env:
           CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_KEYSTORE_PASSWORD }}
         run: |
           flutter pub get
           dart run msix:create -p ${{ env.CERTIFICATE_PASSWORD }} --install-certificate false
+      - name: build (Dev)
+        if: github.event.inputs.dev_build == 'true'
+        run: |
+          flutter pub get
+          dart run msix:create
       - uses: actions/upload-artifact@v4
         with:
           name: windows_build
