@@ -122,7 +122,6 @@ jobs:
         with:
           distribution: 'oracle'
           java-version: '17'
-      # 本番ビルド用: シークレットから証明書を復元
       - name: Decode and install certificate
         if: github.event.inputs.dev_build != 'true'
         env:
@@ -131,7 +130,6 @@ jobs:
         run: |
           echo "$STORE_FILE" | base64 --decode > android/keystore.jks
           echo "$PROPERTY_FILE" > android/key.properties
-      # Devビルド用: ダミーのデバッグキーストアとプロパティを作成してエラーを回避
       - name: Generate debug keystore for Dev build
         if: github.event.inputs.dev_build == 'true'
         run: |
@@ -139,7 +137,7 @@ jobs:
           echo "storePassword=android" > android/key.properties
           echo "keyPassword=android" >> android/key.properties
           echo "keyAlias=androiddebugkey" >> android/key.properties
-          echo "storeFile=keystore.jks" >> android/key.properties
+          echo "storeFile=../keystore.jks" >> android/key.properties
       - run: flutter pub get
       - name: Build Android (Release)
         if: github.event.inputs.dev_build != 'true'
@@ -192,7 +190,7 @@ jobs:
         run: |
           sed -i '/certificate_path:/d' pubspec.yaml
           flutter pub get
-          dart run msix:create
+          dart run msix:create --install-certificate false
       - uses: actions/upload-artifact@v4
         with:
           name: windows_build
