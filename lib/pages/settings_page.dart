@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:pixes/appdata.dart';
@@ -424,6 +425,17 @@ class _SettingsPageState extends State<SettingsPage> {
                           StateController.findOrNull(tag: "MyApp")?.update();
                         }),
                   ])),
+          buildItem(
+              title: "Font".tl,
+              subtitle: appdata.settings["customFont"]?.isEmpty ?? true
+                  ? "Default".tl
+                  : appdata.settings["customFont"],
+              action: Button(
+                child: Text("Select".tl).fixWidth(64),
+                onPressed: () {
+                  context.to(() => const _FontSelectionPage());
+                },
+              )),
         ],
       ),
     );
@@ -832,6 +844,184 @@ class _MacosDownloadPathSelectButtonState
               }
             },
       child: Text(_selecting ? "..." : "Manage".tl).fixWidth(64),
+    );
+  }
+}
+
+class _FontSelectionPage extends StatefulWidget {
+  const _FontSelectionPage();
+
+  @override
+  State<_FontSelectionPage> createState() => _FontSelectionPageState();
+}
+
+class _FontSelectionPageState extends State<_FontSelectionPage> {
+  List<String> systemFonts = [];
+  String? selectedFont;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedFont = appdata.settings["customFont"];
+    loadSystemFonts();
+  }
+
+  Future<void> loadSystemFonts() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    List<String> fonts = [];
+
+    if (Platform.isWindows) {
+      fonts = await _getWindowsFonts();
+    } else if (Platform.isMacOS) {
+      fonts = await _getMacOSFonts();
+    } else if (Platform.isLinux) {
+      fonts = await _getLinuxFonts();
+    }
+
+    setState(() {
+      systemFonts = fonts;
+      isLoading = false;
+    });
+  }
+
+  Future<List<String>> _getWindowsFonts() async {
+    final fontsDir = Directory(r'C:\Windows\Fonts');
+    if (!await fontsDir.exists()) {
+      return [];
+    }
+
+    final fontFiles = fontsDir.listSync().where((entity) {
+      final name = entity.path.toLowerCase();
+      return name.endsWith('.ttf') || name.endsWith('.otf') || name.endsWith('.ttc');
+    }).toList();
+
+    return fontFiles.map((f) => f.path).toList();
+  }
+
+  Future<List<String>> _getMacOSFonts() async {
+    final fontDirs = [
+      Directory('/Library/Fonts'),
+      Directory('~/Library/Fonts').createSync(recursive: true),
+    ];
+
+    List<String> fonts = [];
+    for (final dir in fontDirs) {
+      if (await dir.exists()) {
+        final fontFiles = dir.listSync().where((entity) {
+          final name = entity.path.toLowerCase();
+          return name.endsWith('.ttf') || name.endsWith('.otf') || name.endsWith('.ttc');
+        }).toList();
+        fonts.addAll(fontFiles.map((f) => f.path));
+      }
+    }
+
+    return fonts;
+  }
+
+  Future<List<String>> _getLinuxFonts() async {
+    final fontDirs = [
+      Directory('/usr/share/fonts'),
+      Directory('/usr/local/share/fonts'),
+      Directory('~/.local/share/fonts'),
+    ];
+
+    List<String> fonts = [];
+    for (final dir in fontDirs) {
+      if (await dir.exists()) {
+        final fontFiles = dir.listSync(recursive: true).where((entity) {
+          final name = entity.path.toLowerCase();
+          return name.endsWith('.ttf') || name.endsWith('.otf') || name.endsWith('.ttc');
+        }).toList();
+        fonts.addAll(fontFiles.map((f) => f.path));
+      }
+    }
+
+    return fonts;
+  }
+
+  Future<void> _selectFontFile() async {
+    const XTypeGroup typeGroup = XTypeGroup(
+      label: 'Font files',
+      extensions: ['ttf', 'otf', 'ttc'],
+    );
+
+    final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+
+    if (file != null) {
+      setState(() {
+        selectedFont = file.path;
+        appdata.settings["customFont"] = file.path;
+      });
+      appdata.writeData();
+      StateController.findOrNull(tag: "MyApp")?.update();
+      context.pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaffoldPage(
+      header: TitleBar(title: "Font Selection".tl),
+      content: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Button(
+                  child: Text("Select Font File".tl),
+                  onPressed: _selectFontFile,
+                ),
+                const SizedBox(width: 16),
+                Button(
+                  child: Text("Reset to Default".tl),
+                  onPressed: () {
+                    setState(() {
+                      selectedFont = "";
+                      appdata.settings["customFont"] = "";
+                    });
+                    appdata.writeData();
+                    StateController.findOrNull(tag: "MyApp")?.update();
+                    context.pop();
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: isLoading
+                ? const Center(child: ProgressRing())
+                : ListView.builder(
+                    itemCount: systemFonts.length,
+                    itemBuilder: (context, index) {
+                      final fontPath = systemFonts[index];
+                      final fontName = fontPath.split(Platform.pathSeparator).last;
+                      final isSelected = selectedFont == fontPath;
+
+                      return ListTile(
+                        title: Text(fontName),
+                        subtitle: Text(fontPath, style: const TextStyle(fontSize: 12)),
+                        selected: isSelected,
+                        onPressed: () {
+                          setState(() {
+                            selectedFont = fontPath;
+                            appdata.settings["customFont"] = fontPath;
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                          context.pop();
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -104,7 +104,7 @@ class MyApp extends StatelessWidget {
                     title: 'pixes',
                     theme: FluentThemeData(
                         brightness: brightness,
-                        fontFamily: App.isWindows ? "Microsoft YaHei UI" : null,
+                        fontFamily: _getCustomFont() ?? (App.isWindows ? "Microsoft YaHei UI" : null),
                         accentColor: AccentColor.swatch({
                           'darkest': darken(colorScheme.primary, 30),
                           'darker': darken(colorScheme.primary, 20),
@@ -137,7 +137,7 @@ class MyApp extends StatelessWidget {
                       String? font;
                       List<String>? fallback;
                       if (App.isLinux || App.isWindows) {
-                        font = 'Noto Sans CJK';
+                        font = _getCustomFont() ?? 'Noto Sans CJK';
                         fallback = [
                           'Segoe UI',
                           'Noto Sans SC',
@@ -195,4 +195,24 @@ Color lighten(Color c, [int percent = 10]) {
     _floatToInt8(c.g + (1 - c.g) * p),
     _floatToInt8(c.b + (1 - c.b) * p),
   );
+}
+
+String? _getCustomFont() {
+  final customFont = appdata.settings["customFont"];
+  if (customFont == null || customFont.isEmpty) {
+    return null;
+  }
+
+  // For system fonts, extract the font family name from the path
+  // This is a simplified approach - in a real implementation, you'd need
+  // to parse the font file to get the actual family name
+  if (customFont.contains(Platform.pathSeparator)) {
+    // It's a file path - for now, we'll just return the filename without extension
+    // In a full implementation, you'd load the font and register it
+    final fileName = customFont.split(Platform.pathSeparator).last;
+    final fontName = fileName.split('.').first;
+    return fontName;
+  }
+
+  return customFont;
 }

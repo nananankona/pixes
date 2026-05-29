@@ -46,6 +46,7 @@ class _Appdata {
     "hideEmail": false,
     "hideAccountIcon": false,
     "hideAccountName": false,
+    "customFont": "",
   };
 
   bool lock = false;

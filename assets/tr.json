@@ -188,7 +188,13 @@
         "No results found": "未找到结果",
         "Hide Email": "隐藏邮箱",
         "Hide Account Icon": "隐藏账号图标",
-        "Hide Account Name": "隐藏账号名称"
+        "Hide Account Name": "隐藏账号名称",
+        "Font": "字体",
+        "Select": "选择",
+        "Font Selection": "字体选择",
+        "Select Font File": "选择字体文件",
+        "Reset to Default": "重置为默认",
+        "Default": "默认"
     },
     "zh_TW": {
         "Search": "搜索",
@@ -379,7 +385,13 @@
         "No results found": "未找到結果",
         "Hide Email": "隱藏郵箱",
         "Hide Account Icon": "隱藏賬號圖標",
-        "Hide Account Name": "隱藏賬號名稱"
+        "Hide Account Name": "隱藏賬號名稱",
+        "Font": "字體",
+        "Select": "選擇",
+        "Font Selection": "字體選擇",
+        "Select Font File": "選擇字體文件",
+        "Reset to Default": "重置為默認",
+        "Default": "默認"
     },
     "ko_KR": {
         "Search": "검색",
@@ -570,7 +582,13 @@
         "No results found": "결과를 찾을 수 없음",
         "Hide Email": "이메일 숨기기",
         "Hide Account Icon": "계정 아이콘 숨기기",
-        "Hide Account Name": "계정 이름 숨기기"
+        "Hide Account Name": "계정 이름 숨기기",
+        "Font": "폰트",
+        "Select": "선택",
+        "Font Selection": "폰트 선택",
+        "Select Font File": "폰트 파일 선택",
+        "Reset to Default": "기본값으로 재설정",
+        "Default": "기본"
     },
     "ja_JP": {
         "Search": "検索",
@@ -761,6 +779,12 @@
         "No results found": "結果が見つかりません",
         "Hide Email": "メールアドレスを非表示",
         "Hide Account Icon": "アカウントアイコンを非表示",
-        "Hide Account Name": "アカウント名を非表示"
+        "Hide Account Name": "アカウント名を非表示",
+        "Font": "フォント",
+        "Select": "選択",
+        "Font Selection": "フォント選択",
+        "Select Font File": "フォントファイルを選択",
+        "Reset to Default": "デフォルトにリセット",
+        "Default": "デフォルト"
     }
 }
