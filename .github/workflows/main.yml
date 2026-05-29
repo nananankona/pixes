@@ -307,6 +307,8 @@ jobs:
 
   Release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     needs:
     - Build_IOS
@@ -371,19 +373,16 @@ jobs:
 
     - uses: softprops/action-gh-release@v2
       with:
+        token: ${{ secrets.ACTION_GITHUB_TOKEN || github.token }}
         tag_name: ${{ steps.tag.outputs.tag }}
         prerelease: ${{ github.event.inputs.dev_build == 'true' }}
         generate_release_notes: true
-
         files: |
-          outputs/*.ipa
-          outputs/*.dmg
-          outputs/*.apk
-          outputs/*.zip
-          outputs/*.exe
-          outputs/*.deb
-          outputs/*.zst
-          outputs/*.msix
+          outputs/**/*.ipa
+          outputs/**/*.apk
+          outputs/**/*.deb
+          outputs/**/*.msix
+          outputs/**/*
           windows_app.cer
 
       env:
