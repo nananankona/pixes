@@ -857,14 +857,37 @@ class _FontSelectionPage extends StatefulWidget {
 
 class _FontSelectionPageState extends State<_FontSelectionPage> {
   List<String> systemFonts = [];
+  List<String> filteredFonts = [];
   String? selectedFont;
   bool isLoading = true;
+  final TextEditingController searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     selectedFont = appdata.settings["customFont"];
     loadSystemFonts();
+    searchController.addListener(() {
+      filterFonts();
+    });
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  void filterFonts() {
+    final query = searchController.text.toLowerCase();
+    if (query.isEmpty) {
+      filteredFonts = systemFonts;
+    } else {
+      filteredFonts = systemFonts.where((font) {
+        final fontName = font.split(Platform.pathSeparator).last.toLowerCase();
+        return fontName.contains(query);
+      }).toList();
+    }
   }
 
   Future<void> loadSystemFonts() async {
@@ -884,6 +907,7 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
 
     setState(() {
       systemFonts = fonts;
+      filteredFonts = fonts;
       isLoading = false;
     });
   }
@@ -992,14 +1016,23 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: TextBox(
+              controller: searchController,
+              placeholder: "Search fonts".tl,
+              prefix: const Icon(FluentIcons.search),
+            ),
+          ),
+          const SizedBox(height: 8),
           const Divider(),
           Expanded(
             child: isLoading
                 ? const Center(child: ProgressRing())
                 : ListView.builder(
-                    itemCount: systemFonts.length,
+                    itemCount: filteredFonts.length,
                     itemBuilder: (context, index) {
-                      final fontPath = systemFonts[index];
+                      final fontPath = filteredFonts[index];
                       final fontName = fontPath.split(Platform.pathSeparator).last;
                       final isSelected = selectedFont == fontPath;
 

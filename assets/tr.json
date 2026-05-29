@@ -194,7 +194,8 @@
         "Font Selection": "字体选择",
         "Select Font File": "选择字体文件",
         "Reset to Default": "重置为默认",
-        "Default": "默认"
+        "Default": "默认",
+        "Search fonts": "搜索字体"
     },
     "zh_TW": {
         "Search": "搜索",
@@ -391,7 +392,8 @@
         "Font Selection": "字體選擇",
         "Select Font File": "選擇字體文件",
         "Reset to Default": "重置為默認",
-        "Default": "默認"
+        "Default": "默認",
+        "Search fonts": "搜索字體"
     },
     "ko_KR": {
         "Search": "검색",
@@ -588,7 +590,8 @@
         "Font Selection": "폰트 선택",
         "Select Font File": "폰트 파일 선택",
         "Reset to Default": "기본값으로 재설정",
-        "Default": "기본"
+        "Default": "기본",
+        "Search fonts": "폰트 검색"
     },
     "ja_JP": {
         "Search": "検索",
@@ -785,6 +788,7 @@
         "Font Selection": "フォント選択",
         "Select Font File": "フォントファイルを選択",
         "Reset to Default": "デフォルトにリセット",
-        "Default": "デフォルト"
+        "Default": "デフォルト",
+        "Search fonts": "フォント検索"
     }
 }
