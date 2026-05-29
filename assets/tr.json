@@ -185,7 +185,10 @@
         "The border of the artworks will be darker": "作品的边框将被加深",
         "Initial Page": "初始页面",
         "Close the pane to apply the settings": "关闭面板以应用设置",
-        "No results found": "未找到结果"
+        "No results found": "未找到结果",
+        "Hide Email": "隐藏邮箱",
+        "Hide Account Icon": "隐藏账号图标",
+        "Hide Account Name": "隐藏账号名称"
     },
     "zh_TW": {
         "Search": "搜索",
@@ -373,7 +376,10 @@
         "The border of the artworks will be darker": "作品的邊框將被加深",
         "Initial Page": "初始頁面",
         "Close the pane to apply the settings": "關閉面板以應用設置",
-        "No results found": "未找到結果"
+        "No results found": "未找到結果",
+        "Hide Email": "隱藏郵箱",
+        "Hide Account Icon": "隱藏賬號圖標",
+        "Hide Account Name": "隱藏賬號名稱"
     },
     "ko_KR": {
         "Search": "검색",
@@ -561,7 +567,10 @@
         "The border of the artworks will be darker": "해당 작품들의 테두리가 더 어두워집니다.",
         "Initial Page": "시작 페이지",
         "Close the pane to apply the settings": "설정을 적용하려면 창을 닫으세요",
-        "No results found": "결과를 찾을 수 없음"
+        "No results found": "결과를 찾을 수 없음",
+        "Hide Email": "이메일 숨기기",
+        "Hide Account Icon": "계정 아이콘 숨기기",
+        "Hide Account Name": "계정 이름 숨기기"
     },
     "ja_JP": {
         "Search": "検索",
@@ -749,6 +758,9 @@
         "The border of the artworks will be darker": "作品の枠線が暗くなります",
         "Initial Page": "初期ページ",
         "Close the pane to apply the settings": "設定を適用するにはパネルを閉じてください",
-        "No results found": "結果が見つかりません"
+        "No results found": "結果が見つかりません",
+        "Hide Email": "メールアドレスを非表示",
+        "Hide Account Icon": "アカウントアイコンを非表示",
+        "Hide Account Name": "アカウント名を非表示"
     }
 }

@@ -691,21 +691,23 @@ class UserPane extends PaneItem {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 children: [
-                  Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(48),
-                      child: Image(
-                        height: 48,
-                        width: 48,
-                        image:
-                            CachedImageProvider(appdata.account!.user.profile),
-                        fit: BoxFit.fill,
+                  if (!appdata.settings["hideAccountIcon"])
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(48),
+                        child: Image(
+                          height: 48,
+                          width: 48,
+                          image:
+                              CachedImageProvider(appdata.account!.user.profile),
+                          fit: BoxFit.fill,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(
-                    width: 8,
-                  ),
+                  if (!appdata.settings["hideAccountIcon"])
+                    const SizedBox(
+                      width: 8,
+                    ),
                   if (constrains.maxWidth > 90)
                     Expanded(
                       child: Center(
@@ -715,17 +717,19 @@ class UserPane extends PaneItem {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                appdata.account!.user.name,
-                                style: const TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w500),
-                              ),
-                              Text(
-                                kDebugMode
-                                    ? "<hide due to debug>"
-                                    : appdata.account!.user.email,
-                                style: const TextStyle(fontSize: 12),
-                              )
+                              if (!appdata.settings["hideAccountName"])
+                                Text(
+                                  appdata.account!.user.name,
+                                  style: const TextStyle(
+                                      fontSize: 16, fontWeight: FontWeight.w500),
+                                ),
+                              if (!appdata.settings["hideEmail"])
+                                Text(
+                                  kDebugMode
+                                      ? "<hide due to debug>"
+                                      : appdata.account!.user.email,
+                                  style: const TextStyle(fontSize: 12),
+                                )
                             ],
                           ),
                         ),
@@ -739,6 +743,9 @@ class UserPane extends PaneItem {
         case PaneDisplayMode.top:
           return LayoutBuilder(builder: (context, constrains) {
             if (constrains.maxHeight < 48 || constrains.maxWidth < 32) {
+              return const SizedBox();
+            }
+            if (appdata.settings["hideAccountIcon"]) {
               return const SizedBox();
             }
             return Center(

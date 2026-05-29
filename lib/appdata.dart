@@ -43,6 +43,9 @@ class _Appdata {
     "checkUpdate": true,
     "emphasizeArtworksFromFollowingArtists": true,
     "initialPage": 4,
+    "hideEmail": false,
+    "hideAccountIcon": false,
+    "hideAccountName": false,
   };
 
   bool lock = false;

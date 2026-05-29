@@ -114,6 +114,36 @@ class _SettingsPageState extends State<SettingsPage> {
                   launchUrlString("https://www.pixiv.net/setting_user.php");
                 },
               )),
+          buildItem(
+              title: "Hide Email".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings["hideEmail"],
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["hideEmail"] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          buildItem(
+              title: "Hide Account Icon".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings["hideAccountIcon"],
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["hideAccountIcon"] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          buildItem(
+              title: "Hide Account Name".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings["hideAccountName"],
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["hideAccountName"] = value;
+                    });
+                    appdata.writeData();
+                  })),
         ],
       ),
     );
