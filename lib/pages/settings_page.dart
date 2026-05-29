@@ -905,7 +905,7 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
   Future<List<String>> _getMacOSFonts() async {
     final fontDirs = [
       Directory('/Library/Fonts'),
-      Directory('~/Library/Fonts').createSync(recursive: true),
+      Directory('~/Library/Fonts'),
     ];
 
     List<String> fonts = [];
@@ -1006,7 +1006,7 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
                       return ListTile(
                         title: Text(fontName),
                         subtitle: Text(fontPath, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
+                        leading: isSelected ? const Icon(FluentIcons.check_mark) : null,
                         onPressed: () {
                           setState(() {
                             selectedFont = fontPath;
