@@ -307,8 +307,16 @@ jobs:
 
   Release:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
+
+    if: |
+      always() &&
+      (
+        github.event_name == 'release' ||
+        github.event_name == 'workflow_dispatch'
+      )
 
     needs:
     - Build_IOS
@@ -316,10 +324,6 @@ jobs:
     - Build_Windows
     - Build_Linux
     - Build_Linux_ARM64
-
-    if: |
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.dev_build == 'true')
 
     steps:
     # macOS artifact: disabled together with Build_MacOS (was macos.zip / DMG from that job).
@@ -329,31 +333,37 @@ jobs:
     #     path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: app-ios.ipa
         path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: apks
         path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: windows_build
         path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: deb_build
         path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: arch_build
         path: outputs
 
     - uses: actions/download-artifact@v4
+      continue-on-error: true
       with:
         name: deb_arm64_build
         path: outputs
@@ -373,7 +383,7 @@ jobs:
 
     - uses: softprops/action-gh-release@v2
       with:
-        token: ${{ secrets.ACTION_GITHUB_TOKEN || github.token }}
+        token: ${{ github.token }}
         tag_name: ${{ steps.tag.outputs.tag }}
         prerelease: ${{ github.event.inputs.dev_build == 'true' }}
         generate_release_notes: true
@@ -382,8 +392,7 @@ jobs:
           outputs/**/*.apk
           outputs/**/*.deb
           outputs/**/*.msix
-          outputs/**/*
           windows_app.cer
 
       env:
-        GITHUB_TOKEN: ${{ secrets.ACTION_GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
