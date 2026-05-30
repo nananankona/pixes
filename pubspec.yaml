@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.0.1f+0
+version: 2.0.1-f+0
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
@@ -81,7 +81,7 @@ flutter_to_arch:
   icon: debian/gui/pixes.png
   categories: Utility
   keywords: Flutter;pixiv;images;
-  url: https://github.com/wgh136/pixes
+  url: https://github.com/nananankona/pixes
   depends:
     - gtk3
 
