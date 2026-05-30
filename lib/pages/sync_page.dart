@@ -32,6 +32,18 @@ class _SyncPageState extends State<SyncPage> {
   void initState() {
     super.initState();
     _load();
+    _refreshDevices();
+  }
+
+  Future<void> _refreshDevices() async {
+    if (!_connected) return;
+    final devices = await syncService.getDevices();
+    final counts = await syncService.getLocalCounts();
+    if (!mounted) return;
+    setState(() {
+      _devices = devices;
+      _counts = counts;
+    });
   }
 
   @override
@@ -48,6 +60,8 @@ class _SyncPageState extends State<SyncPage> {
     _nameCtl.text = appdata.settings["syncDeviceName"] as String? ?? "";
     _enabled = appdata.settings["syncEnabled"] == true;
     _syncSettings = appdata.settings["syncSettingsEnabled"] != false;
+    final code = syncService.lastStatusCode;
+    _connected = code != null && code >= 200 && code < 300;
   }
 
   void _save() {
@@ -63,32 +77,32 @@ class _SyncPageState extends State<SyncPage> {
 
   Future<void> _connect() async {
     _save();
-    setState(() {
-      _connecting = true;
-      _connected = false;
-      _needsSetup = false;
-      _devices = [];
-    });
+    setState(() => _connecting = true);
     final code = await syncService.checkConnection();
     if (!mounted) return;
-    setState(() {
-      _connecting = false;
-      _connected = code != null && code >= 200 && code < 300;
-      _needsSetup = syncService.needsSetup;
-    });
-    if (_connected) {
+    setState(() => _connecting = false);
+    final ok = code != null && code >= 200 && code < 300;
+    if (ok) {
       final devices = await syncService.getDevices();
       final counts = await syncService.getLocalCounts();
       if (!mounted) return;
       setState(() {
+        _connected = true;
+        _needsSetup = false;
         _devices = devices;
         _counts = counts;
       });
       context.showToast(message: "Connection successful".tl);
-    } else if (_needsSetup) {
-      context.showToast(message: "401 - check setup guide below".tl);
     } else {
-      context.showToast(message: "Connection failed (${code ?? "?"})".tl);
+      setState(() {
+        _connected = false;
+        _needsSetup = syncService.needsSetup;
+      });
+      if (_needsSetup) {
+        context.showToast(message: "401 - check setup guide below".tl);
+      } else {
+        context.showToast(message: "Connection failed ({code})".tl.replaceAll("{code}", "${code ?? "?"}"));
+      }
     }
   }
 
@@ -98,15 +112,24 @@ class _SyncPageState extends State<SyncPage> {
     await syncService.syncNow();
     final code = syncService.lastStatusCode;
     if (!mounted) return;
-    setState(() {
-      _syncing = false;
-      _needsSetup = syncService.needsSetup;
-    });
+    setState(() => _syncing = false);
     if (code != null && code >= 200 && code < 300) {
+      final devices = await syncService.getDevices();
+      final counts = await syncService.getLocalCounts();
+      if (!mounted) return;
+      setState(() {
+        _connected = true;
+        _needsSetup = false;
+        _devices = devices;
+        _counts = counts;
+      });
       context.showToast(message: "Sync completed".tl);
-      _connect();
     } else {
-      context.showToast(message: "Sync failed ($code)".tl);
+      setState(() {
+        _connected = false;
+        _needsSetup = syncService.needsSetup;
+      });
+      context.showToast(message: "Sync failed ({code})".tl.replaceAll("{code}", "$code"));
     }
   }
 
@@ -130,7 +153,30 @@ class _SyncPageState extends State<SyncPage> {
     }
     if (!mounted) return;
     context.showToast(message: "Remote data cleared".tl);
-    _connect();
+    setState(() {
+      _devices = [];
+      _counts = {};
+    });
+    await _connect();
+  }
+
+  Future<void> _resetDeviceId() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => ContentDialog(
+        title: Text("Reset Device ID?".tl),
+        content: Text("This will generate a new device ID. The old ID will no longer be recognized as this device.".tl),
+        actions: [
+          Button(onPressed: () => Navigator.pop(c, false), child: Text("Cancel".tl)),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text("Reset".tl)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    syncService.resetDeviceId();
+    if (!mounted) return;
+    context.showToast(message: "Device ID reset".tl);
+    setState(() {});
   }
 
   String get _projectId => syncService.projectId ?? "";
@@ -225,13 +271,21 @@ class _SyncPageState extends State<SyncPage> {
           _statusCard(),
           const SizedBox(height: 12),
 
-          // ── Devices + clear (only when connected) ──
-          if (_connected) ...[
-            _devicesCard(),
-            const SizedBox(height: 12),
-            Row(children: [
+          Row(children: [
+            Button(
+              onPressed: () => _resetDeviceId(),
+              child: Text("Reset Device ID".tl),
+            ),
+            if (_connected) ...[
+              const SizedBox(width: 12),
               Button(onPressed: _clearRemote, child: Text("Clear remote data".tl)),
-            ]),
+            ],
+          ]),
+
+          // ── Devices (only when connected) ──
+          if (_connected) ...[
+            const SizedBox(height: 12),
+            _devicesCard(),
           ],
 
           // ── Setup guide (401/403) ──
@@ -358,7 +412,7 @@ alter table sync_browsing_history disable row level security;
           Text("Setup Guide".tl, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.orange)),
           const SizedBox(height: 8),
           Text(
-            "Your Supabase returned HTTP ${syncService.lastStatusCode}. First check that your anon key is correct, then try the SQL below.".tl,
+            "Your Supabase returned HTTP {code}. First check that your anon key is correct, then try the SQL below.".tl.replaceAll("{code}", "${syncService.lastStatusCode}"),
             style: const TextStyle(fontSize: 13),
           ),
           const SizedBox(height: 12),

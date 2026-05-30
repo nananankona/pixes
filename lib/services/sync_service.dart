@@ -55,6 +55,7 @@ class SyncService {
   Timer? _debounceTimer;
   int? lastStatusCode;
   bool _stopped = false;
+  bool _pulling = false;
 
   String? get _url => appdata.settings["syncUrl"] as String?;
   String? get _key => appdata.settings["syncKey"] as String?;
@@ -94,6 +95,11 @@ class SyncService {
   String get deviceName =>
       appdata.settings["syncDeviceName"] as String? ?? "";
 
+  void resetDeviceId() {
+    appdata.settings["syncDeviceId"] = const Uuid().v4();
+    appdata.writeSettings();
+  }
+
   bool _ensureDio() {
     if (!enabled || _stopped) return false;
     if (_dio != null) return true;
@@ -126,6 +132,7 @@ class SyncService {
   void notifyChange() {
     if (!enabled) return;
     if (_stopped) return;
+    if (_pulling) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 2), _pushAll);
   }
@@ -141,12 +148,17 @@ class SyncService {
 
   Future<void> _pullAll() async {
     if (!_ensureDio()) return;
-    final futures = <Future<void>>[];
-    futures.add(_pullSearchHistory());
-    futures.add(_pullBrowsingHistory());
-    if (syncSettingsEnabled) futures.add(_pullSettings());
-    await Future.wait(futures);
-    await _upsertDevice();
+    _pulling = true;
+    try {
+      final futures = <Future<void>>[];
+      futures.add(_pullSearchHistory());
+      futures.add(_pullBrowsingHistory());
+      if (syncSettingsEnabled) futures.add(_pullSettings());
+      await Future.wait(futures);
+      await _upsertDevice();
+    } finally {
+      _pulling = false;
+    }
   }
 
   Future<void> _pushAll() async {
@@ -226,18 +238,27 @@ class SyncService {
     if (_stopped) return;
     final res = await _dio!.get('/sync_search_history?select=data,keyword,search_type,updated_at');
     if (!_ok(res) || res.data == null) return;
-    final remote = (res.data as List).map((e) =>
-        SearchHistoryEntry.fromJson((e as Map<String, dynamic>)['data'] as Map<String, dynamic>)).toList();
+    final remote = (res.data as List).map((e) {
+      final row = e as Map<String, dynamic>;
+      return (
+        entry: SearchHistoryEntry.fromJson(row['data'] as Map<String, dynamic>),
+        updatedAt: row['updated_at'] as String?
+      );
+    }).toList();
     final local = appdata.getSearchHistory();
-    final map = <String, SearchHistoryEntry>{};
+    final seen = <String>{};
+    final merged = <SearchHistoryEntry>[];
     for (var e in local) {
-      map["${e.keyword}:${e.searchType}"] = e;
+      seen.add("${e.keyword}:${e.searchType}");
+      merged.add(e);
     }
-    for (var e in remote) {
-      map["${e.keyword}:${e.searchType}"] = e;
+    for (var r in remote) {
+      final key = "${r.entry.keyword}:${r.entry.searchType}";
+      if (!seen.contains(key)) {
+        seen.add(key);
+        merged.add(r.entry);
+      }
     }
-    final merged = map.values.toList();
-    merged.sort((a, b) => b.keyword.compareTo(a.keyword));
     appdata.importSearchHistory(merged);
   }
 
@@ -246,13 +267,16 @@ class SyncService {
     final local = appdata.getSearchHistory();
     final now = DateTime.now().toIso8601String();
     for (var entry in local) {
-      final res = await _dio!.post('/sync_search_history', data: {
+      final res = await _dio!.post('/sync_search_history?on_conflict=keyword,search_type', data: {
         'keyword': entry.keyword,
         'search_type': entry.searchType,
         'data': entry.toJson(),
         'updated_at': now,
       }, options: Options(headers: {'Prefer': 'resolution=merge-duplicates'}));
-      if (!_ok(res)) break;
+      if (!_ok(res)) {
+        Log.error("Sync", "Push search history failed: ${res.statusCode}");
+        continue;
+      }
     }
   }
 
@@ -287,7 +311,7 @@ class SyncService {
     final local = HistoryManager().getAll();
     final now = DateTime.now().toIso8601String();
     for (var h in local) {
-      final res = await _dio!.post('/sync_browsing_history', data: {
+      final res = await _dio!.post('/sync_browsing_history?on_conflict=illust_id', data: {
         'illust_id': h.id,
         'data': {
           'id': h.id,
@@ -303,7 +327,10 @@ class SyncService {
         },
         'updated_at': now,
       }, options: Options(headers: {'Prefer': 'resolution=merge-duplicates'}));
-      if (!_ok(res)) break;
+      if (!_ok(res)) {
+        Log.error("Sync", "Push browsing history failed: ${res.statusCode}");
+        continue;
+      }
     }
   }
 
