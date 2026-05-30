@@ -1,17 +1,31 @@
 # pixes
 
-[![flutter](https://img.shields.io/badge/flutter-3.32.5-blue)](https://flutter.dev/) 
-[![License](https://img.shields.io/github/license/wgh136/pixes)](https://github.com/wgh136/pixes/blob/master/LICENSE)
-[![Download](https://img.shields.io/github/v/release/wgh136/pixes)](https://github.com/wgh136/pixes)
-[![stars](https://img.shields.io/github/stars/wgh136/pixes)](https://github.com/wgh136/pixes/stargazers)
+[![flutter](https://img.shields.io/badge/flutter-3.41.6-blue)](https://flutter.dev/)
+[![License](https://img.shields.io/github/license/nananankona/pixes)](https://github.com/nananankona/pixes/blob/master/LICENSE)
+[![Download](https://img.shields.io/github/v/release/nananankona/pixes)](https://github.com/nananankona/pixes)
+[![stars](https://img.shields.io/github/stars/nananankona/pixes)](https://github.com/nananankona/pixes/stargazers)
 
 Unofficial Pixiv app, support Windows, Android, iOS, macOS, linux
 
 All main features are implemented.
 
+## Fork
+
+This is a fork of [wgh136/pixes](https://github.com/wgh136/pixes) with the following additions:
+
+- Custom font
+- Hide email address
+- Age tag display fix
+- Japanese localization
+- PIN lock
+- Data export / import
+- Token login (login with config file)
+
+[Japanese README is here](README_JA.md)
+
 ## Download
 
-Download from [Release](https://github.com/wgh136/pixes/releases)
+Download from [Release](https://github.com/nananankona/pixes/releases)
 
 ## Build from source
 
@@ -33,7 +47,7 @@ Run `flutter build ios/windows/macos`
 
 Use`python3 debian/build.py {ARCH}` to build deb package. Replace {ARCH} with `x64` or `arm64`.
 
-For other linux distributions, you can use `flutter build linux` to build. 
+For other linux distributions, you can use `flutter build linux` to build.
 You must register the `pixiv` scheme in the `.desktop` file, otherwise the login will not work.
 
 ## Screenshots
