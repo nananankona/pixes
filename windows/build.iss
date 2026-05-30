@@ -4,7 +4,7 @@
 #define MyAppName "pixes"
 #define MyAppVersion "{{version}}"
 #define MyAppPublisher "Nyne"
-#define MyAppURL "https://github.com/wgh136/pixes"
+#define MyAppURL "https://github.com/nananankona/pixes"
 #define MyAppExeName "pixes.exe"
 #define RootPath "{{root_path}}"
 

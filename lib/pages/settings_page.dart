@@ -336,7 +336,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   size: 18,
                 ),
                 onPressed: () =>
-                    launchUrlString("https://github.com/wgh136/pixes"),
+                    launchUrlString("https://github.com/nananankona/pixes"),
               )),
           buildItem(
               title: "Telegram",

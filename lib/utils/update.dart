@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 Future<String> getLatestVersion() async {
   var dio = AppDio();
   var res = await dio
-      .get("https://raw.githubusercontent.com/wgh136/pixes/refs/heads/master/pubspec.yaml");
+      .get("https://raw.githubusercontent.com/nananankona/pixes/refs/heads/master/pubspec.yaml");
   var lines = (res.data as String).split("\n");
   for (var line in lines) {
     if (line.startsWith("version:")) {
@@ -58,7 +58,7 @@ Future<void> checkUpdate() async {
                       onPressed: () {
                         Navigator.of(context).pop();
                         launchUrlString(
-                            "https://github.com/wgh136/pixes/releases/latest");
+                            "https://github.com/nananankona/pixes/releases/latest");
                       })
                 ],
               ));
