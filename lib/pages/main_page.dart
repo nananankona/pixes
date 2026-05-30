@@ -18,7 +18,7 @@ import "package:pixes/pages/novel_ranking_page.dart";
 import "package:pixes/pages/novel_recommendation_page.dart";
 import "package:pixes/pages/ranking.dart";
 import "package:pixes/pages/recommendation_page.dart";
-import "package:pixes/pages/login_page.dart";
+import "package:pixes/pages/login_page.dart" hide Text;
 import "package:pixes/pages/search_page.dart";
 import "package:pixes/pages/settings_page.dart";
 import "package:pixes/pages/user_info_page.dart";
@@ -84,6 +84,15 @@ class _MainPageState extends State<MainPage>
     listenMouseSideButtonToBack(navigatorKey);
     App.mainNavigatorKey = navigatorKey;
     index = appdata.settings["initialPage"] ?? 4;
+    // Attempt automatic token refresh if account data exists
+    if (appdata.account != null) {
+      Network().refreshToken().then((res) {
+        if (res.success) {
+          // Force UI rebuild to reflect logged‑in state
+          if (mounted) setState(() {});
+        }
+      });
+    }
     super.initState();
   }
 
@@ -102,7 +111,8 @@ class _MainPageState extends State<MainPage>
   void dispose() {
     StateController.remove<TitleBarController>();
     windowManager.removeListener(this);
-    ModalRoute.of(context)!.unregisterPopEntry(this);
+    // Use stored route reference to safely unregister
+    _route?.unregisterPopEntry(this);
     super.dispose();
   }
 

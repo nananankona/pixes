@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:pixes/appdata.dart';
+import 'package:pixes/network/models.dart';
 import 'package:pixes/components/keyboard.dart';
 import 'package:pixes/components/md.dart';
 import 'package:pixes/components/message.dart';
@@ -25,6 +27,60 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  // Helper: show a simple hex color picker (RGB sliders)
+  Future<void> _pickHexColor(String title, String settingKey) async {
+    // parse existing hex or default to white
+    String current = (appdata.settings[settingKey] ?? "");
+    int r = 255, g = 255, b = 255;
+    if (current.startsWith('#') && current.length == 7) {
+      try {
+        r = int.parse(current.substring(1, 3), radix: 16);
+        g = int.parse(current.substring(3, 5), radix: 16);
+        b = int.parse(current.substring(5, 7), radix: 16);
+      } catch (_) {}
+    }
+    double rVal = r.toDouble();
+    double gVal = g.toDouble();
+    double bVal = b.toDouble();
+    await showDialog(
+      context: context,
+      builder: (c) => ContentDialog(
+        title: Text(title),
+        content: StatefulBuilder(
+          builder: (context, innerSetState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('R'),
+              Slider(min: 0, max: 255, divisions: 255, value: rVal, onChanged: (v) => innerSetState(() => rVal = v)),
+              const Text('G'),
+              Slider(min: 0, max: 255, divisions: 255, value: gVal, onChanged: (v) => innerSetState(() => gVal = v)),
+              const Text('B'),
+              Slider(min: 0, max: 255, divisions: 255, value: bVal, onChanged: (v) => innerSetState(() => bVal = v)),
+              const SizedBox(height: 8),
+              Container(width: 40, height: 40, color: Color.fromRGBO(rVal.toInt(), gVal.toInt(), bVal.toInt(), 1)),
+            ],
+          ),
+        ),
+        actions: [
+          Button(
+            child: Text('Confirm'.tl),
+            onPressed: () {
+              final hex = '#'
+                  '${rVal.toInt().toRadixString(16).padLeft(2, '0')}'
+                  '${gVal.toInt().toRadixString(16).padLeft(2, '0')}'
+                  '${bVal.toInt().toRadixString(16).padLeft(2, '0')}';
+              setState(() {
+                appdata.settings[settingKey] = hex;
+              });
+              appdata.writeData();
+              StateController.findOrNull(tag: "MyApp")?.update();
+              c.pop();
+            },
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
@@ -38,10 +94,12 @@ class _SettingsPageState extends State<SettingsPage> {
           buildBrowse(),
           buildHeader("Download".tl),
           buildDownload(),
-          buildHeader("Appearance".tl),
-          buildAppearance(),
-          buildHeader("About".tl),
-          buildAbout(),
+           buildHeader("Appearance".tl),
+           buildAppearance(),
+           buildHeader("Security".tl),
+           buildSecurity(),
+           buildHeader("About".tl),
+           buildAbout(),
           SliverPadding(
               padding: EdgeInsets.only(bottom: context.padding.bottom)),
         ],
@@ -342,38 +400,71 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Column(
         children: [
           buildItem(
-              title: "Theme".tl,
-              action: DropDownButton(
-                  title: Text(appdata.settings["theme"] ?? "System".tl),
-                  items: [
-                    MenuFlyoutItem(
-                        text: Text("System".tl),
-                        onPressed: () {
-                          setState(() {
-                            appdata.settings["theme"] = "System";
-                          });
-                          appdata.writeData();
-                          StateController.findOrNull(tag: "MyApp")?.update();
-                        }),
-                    MenuFlyoutItem(
-                        text: Text("light".tl),
-                        onPressed: () {
-                          setState(() {
-                            appdata.settings["theme"] = "Light";
-                          });
-                          appdata.writeData();
-                          StateController.findOrNull(tag: "MyApp")?.update();
-                        }),
-                    MenuFlyoutItem(
-                        text: Text("dark".tl),
-                        onPressed: () {
-                          setState(() {
-                            appdata.settings["theme"] = "Dark";
-                          });
-                          appdata.writeData();
-                          StateController.findOrNull(tag: "MyApp")?.update();
-                        }),
-                  ])),
+                  title: "Theme".tl,
+                  action: DropDownButton(
+                      title: Text(appdata.settings["theme"] ?? "System".tl),
+                      items: [
+                        MenuFlyoutItem(
+                            text: Text("System".tl),
+                            onPressed: () {
+                              setState(() {
+                                appdata.settings["theme"] = "System";
+                              });
+                              appdata.writeData();
+                              StateController.findOrNull(tag: "MyApp")?.update();
+                            }),
+                        MenuFlyoutItem(
+                            text: Text("light".tl),
+                            onPressed: () {
+                              setState(() {
+                                appdata.settings["theme"] = "Light";
+                              });
+                              appdata.writeData();
+                              StateController.findOrNull(tag: "MyApp")?.update();
+                            }),
+                        MenuFlyoutItem(
+                            text: Text("dark".tl),
+                            onPressed: () {
+                              setState(() {
+                                appdata.settings["theme"] = "Dark";
+                              });
+                              appdata.writeData();
+                              StateController.findOrNull(tag: "MyApp")?.update();
+                            }),
+                      ])),
+                        // Background image selection (disabled – custom theme removed)
+                        // buildItem(
+                        //   title: "Background Image".tl,
+                        //   subtitle: appdata.settings["themeBackground"]?.isEmpty ?? true ? "Default".tl : appdata.settings["themeBackground"],
+                        //   action: Button(
+                        //     child: Text("Select".tl).fixWidth(64),
+                        //     onPressed: () async {
+                        //       final XFile? file = await openFile(
+                        //         acceptedTypeGroups: [
+                        //           XTypeGroup(label: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp'])
+                        //         ],
+                        //       );
+                        //       if (file != null) {
+                        //         setState(() {
+                        //           appdata.settings["themeBackground"] = file.path;
+                        //         });
+                        //         appdata.writeData();
+                        //         StateController.findOrNull(tag: "MyApp")?.update();
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
+// Primary color (hex) with color picker (disabled – custom theme removed)
+            // buildItem(
+            //   title: "Primary Color".tl,
+            //   subtitle: appdata.settings["themeColor"]?.isEmpty ?? true ? "Default".tl : appdata.settings["themeColor"],
+            //   action: Button(
+            //     child: Text("Set".tl).fixWidth(64),
+            //     onPressed: () async {
+            //       await _pickHexColor("Primary Color".tl, "themeColor");
+            //     },
+            //   ),
+            // ),
           buildItem(
               title: "Language".tl,
               action: DropDownButton(
@@ -425,6 +516,60 @@ class _SettingsPageState extends State<SettingsPage> {
                           StateController.findOrNull(tag: "MyApp")?.update();
                         }),
                   ])),
+
+            // Background opacity (disabled – custom theme removed)
+            // buildItem(
+            //   title: "Background Opacity".tl,
+            //   subtitle: ((appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 1.0).toStringAsFixed(2),
+            //   action: Slider(
+            //     value: (appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 1.0,
+            //     min: 0.0,
+            //     max: 1.0,
+            //     onChanged: (v) {
+            //       setState(() {
+            //         appdata.settings["themeBackgroundOpacity"] = v;
+            //       });
+            //       appdata.writeData();
+            //       StateController.findOrNull(tag: "MyApp")?.update();
+            //     },
+            //   ),
+            // ),
+// Background color with color picker (disabled – custom theme removed)
+            // buildItem(
+            //   title: "Background Color".tl,
+            //   subtitle: appdata.settings["themeBackgroundColor"]?.isEmpty ?? true ? "Default".tl : appdata.settings["themeBackgroundColor"],
+            //   action: Button(
+            //     child: Text("Set".tl).fixWidth(64),
+            //     onPressed: () async {
+            //       await _pickHexColor("Background Color".tl, "themeBackgroundColor");
+            //     },
+            //   ),
+            // ),
+// Text color with color picker
+            // Text color with color picker (disabled – custom theme removed)
+            // buildItem(
+            //   title: "Text Color".tl,
+            //   subtitle: appdata.settings["textColor"]?.isEmpty ?? true ? "Default".tl : appdata.settings["textColor"],
+            //   action: Button(
+            //     child: Text("Set".tl).fixWidth(64),
+            //     onPressed: () async {
+            //       await _pickHexColor("Text Color".tl, "textColor");
+            //     },
+            //   ),
+            // ),
+// Icon color with color picker
+            // Icon color with color picker (disabled – custom theme removed)
+            // buildItem(
+            //   title: "Icon Color".tl,
+            //   subtitle: appdata.settings["iconColor"]?.isEmpty ?? true ? "Default".tl : appdata.settings["iconColor"],
+            //   action: Button(
+            //     child: Text("Set".tl).fixWidth(64),
+            //     onPressed: () async {
+            //       await _pickHexColor("Icon Color".tl, "iconColor");
+            //     },
+            //   ),
+            // ),
+          // Font selection
           buildItem(
               title: "Font".tl,
               subtitle: appdata.settings["customFont"]?.isEmpty ?? true
@@ -440,7 +585,101 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+
+  Widget buildSecurity() {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          buildItem(
+              title: "Lock App".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings["lockEnabled"] ?? false,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["lockEnabled"] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          buildItem(
+              title: "Password".tl,
+              action: Button(
+                child: Text("Set".tl).fixWidth(64),
+                onPressed: () {
+                  context.to(() => _SetSingleFieldPage(
+                        "Password".tl,
+                        "lockPassword",
+                      ));
+                },
+              )),
+          buildItem(
+              title: "PIN".tl,
+              action: Button(
+                child: Text("Set".tl).fixWidth(64),
+                onPressed: () {
+                  context.to(() => _SetSingleFieldPage(
+                        "PIN".tl,
+                        "lockPin",
+                      ));
+                },
+              )),
+          // Private Mode toggle
+          buildItem(
+              title: "Private Mode".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings["privateMode"] ?? false,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["privateMode"] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          // Export / Import Data
+          buildItem(
+              title: "Export Data".tl,
+              action: Button(
+                child: Text("Export".tl).fixWidth(64),
+                onPressed: () async {
+                  final jsonData = jsonEncode({
+                    "settings": appdata.settings,
+                    "account": appdata.account?.toJson(),
+                  });
+                  final tempFile = File('${Directory.systemTemp.path}/pixes_export_${DateTime.now().millisecondsSinceEpoch}.json');
+                  await tempFile.writeAsString(jsonData);
+                  // reuse saveFile utility
+                  saveFile(tempFile, 'pixes_export.json');
+                },
+              )),
+          buildItem(
+              title: "Import Data".tl,
+              action: Button(
+                child: Text("Import".tl).fixWidth(64),
+                onPressed: () async {
+                  final XFile? file = await openFile(
+                    acceptedTypeGroups: [
+                      XTypeGroup(label: 'JSON', extensions: ['json'])
+                    ],
+                  );
+                  if (file != null) {
+                    final String content = await file.readAsString();
+                    final Map<String, dynamic> map = jsonDecode(content);
+                    if (map.containsKey('settings')) {
+                      appdata.settings = {...appdata.settings, ...map['settings']};
+                    }
+                    if (map.containsKey('account') && map['account'] != null) {
+                      appdata.account = Account.fromJson(map['account']);
+                    }
+                    appdata.writeData();
+                    StateController.findOrNull(tag: "MyApp")?.update();
+                  }
+                },
+              )),
+        ],
+      ),
+    );
+    }
+
 }
+
 
 class _SetSingleFieldPage extends StatefulWidget {
   const _SetSingleFieldPage(this.title, this.field, {this.check});
@@ -487,8 +726,10 @@ class _SetSingleFieldPageState extends State<_SetSingleFieldPage> {
         ).toAlign(Alignment.centerRight).paddingRight(16),
       ],
     );
-  }
+    }
+
 }
+
 
 class _SetDownloadSubPathPage extends StatefulWidget {
   const _SetDownloadSubPathPage();
@@ -562,7 +803,86 @@ ${"Some keywords will be replaced by the following rule:".tl}
 
 ${"Multiple path separators will be automatically replaced with a single".tl}
 """;
+
+  // Helper: show a simple hex color picker (RGB sliders)
+  Future<void> _pickHexColor(String title, String settingKey) async {
+    // parse existing hex or default to white
+    String current = (appdata.settings[settingKey] ?? "");
+    int r = 255, g = 255, b = 255;
+    if (current.startsWith('#') && current.length == 7) {
+      try {
+        r = int.parse(current.substring(1, 3), radix: 16);
+        g = int.parse(current.substring(3, 5), radix: 16);
+        b = int.parse(current.substring(5, 7), radix: 16);
+      } catch (_) {}
+    }
+    double rVal = r.toDouble();
+    double gVal = g.toDouble();
+    double bVal = b.toDouble();
+    await showDialog(
+      context: context,
+      builder: (c) => ContentDialog(
+        title: Text(title),
+        content: StatefulBuilder(
+          builder: (context, innerSetState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('R'),
+              Slider(
+                min: 0,
+                max: 255,
+                divisions: 255,
+                value: rVal,
+                onChanged: (v) => innerSetState(() => rVal = v),
+              ),
+              const Text('G'),
+              Slider(
+                min: 0,
+                max: 255,
+                divisions: 255,
+                value: gVal,
+                onChanged: (v) => innerSetState(() => gVal = v),
+              ),
+              const Text('B'),
+              Slider(
+                min: 0,
+                max: 255,
+                divisions: 255,
+                value: bVal,
+                onChanged: (v) => innerSetState(() => bVal = v),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 40,
+                color: Color.fromRGBO(rVal.toInt(), gVal.toInt(), bVal.toInt(), 1),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Button(
+            child: Text('Confirm'.tl),
+            onPressed: () {
+              final hex = '#'
+                  '${rVal.toInt().toRadixString(16).padLeft(2, '0')}'
+                  '${gVal.toInt().toRadixString(16).padLeft(2, '0')}'
+                  '${bVal.toInt().toRadixString(16).padLeft(2, '0')}';
+              setState(() {
+                appdata.settings[settingKey] = hex;
+              });
+              appdata.writeData();
+              StateController.findOrNull(tag: "MyApp")?.update();
+              c.pop();
+            },
+          ),
+        ],
+      ),
+    );
+    }
+
 }
+
 
 class _BlockTagsPage extends StatefulWidget {
   const _BlockTagsPage();
@@ -646,8 +966,10 @@ class __BlockTagsPageState extends State<_BlockTagsPage> {
         )
       ],
     );
-  }
+    }
+
 }
+
 
 class ShortcutsSettings extends StatefulWidget {
   const ShortcutsSettings({super.key});
@@ -726,8 +1048,10 @@ class _ShortcutsSettingsState extends State<ShortcutsSettings> {
         ),
       ),
     );
-  }
+    }
+
 }
+
 
 class _SetInitialPageWidget extends StatefulWidget {
   const _SetInitialPageWidget();
@@ -794,8 +1118,10 @@ class _SetInitialPageWidgetState extends State<_SetInitialPageWidget> {
         },
       ),
     );
-  }
+    }
+
 }
+
 
 class _MacosDownloadPathSelectButton extends StatefulWidget {
   const _MacosDownloadPathSelectButton({this.onSelected});
@@ -845,8 +1171,10 @@ class _MacosDownloadPathSelectButtonState
             },
       child: Text(_selecting ? "..." : "Manage".tl).fixWidth(64),
     );
-  }
+    }
+
 }
+
 
 class _FontSelectionPage extends StatefulWidget {
   const _FontSelectionPage();
@@ -880,14 +1208,16 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
 
   void filterFonts() {
     final query = searchController.text.toLowerCase();
-    if (query.isEmpty) {
-      filteredFonts = systemFonts;
-    } else {
-      filteredFonts = systemFonts.where((font) {
-        final fontName = font.split(Platform.pathSeparator).last.toLowerCase();
-        return fontName.contains(query);
-      }).toList();
-    }
+    setState(() {
+      if (query.isEmpty) {
+        filteredFonts = systemFonts;
+      } else {
+        filteredFonts = systemFonts.where((font) {
+          final fontName = font.split(Platform.pathSeparator).last.toLowerCase();
+          return fontName.contains(query);
+        }).toList();
+      }
+    });
   }
 
   Future<void> loadSystemFonts() async {
@@ -1036,25 +1366,28 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
                       final fontName = fontPath.split(Platform.pathSeparator).last;
                       final isSelected = selectedFont == fontPath;
 
-                      return ListTile(
-                        title: Text(fontName),
-                        subtitle: Text(fontPath, style: const TextStyle(fontSize: 12)),
-                        leading: isSelected ? const Icon(FluentIcons.check_mark) : null,
-                        onPressed: () {
-                          setState(() {
-                            selectedFont = fontPath;
-                            appdata.settings["customFont"] = fontPath;
-                          });
-                          appdata.writeData();
-                          StateController.findOrNull(tag: "MyApp")?.update();
-                          context.pop();
-                        },
-                      );
+return ListTile(
+                          // Show font family name (file name without extension) and full path
+                          title: Text(fontPath.split(Platform.pathSeparator).last.split('.').first),
+                          subtitle: Text(fontPath, style: const TextStyle(fontSize: 12)),
+                          leading: isSelected ? const Icon(FluentIcons.check_mark) : null,
+                          onPressed: () {
+                            setState(() {
+                              selectedFont = fontPath;
+                              appdata.settings["customFont"] = fontPath;
+                            });
+                            appdata.writeData();
+                            StateController.findOrNull(tag: "MyApp")?.update();
+                            context.pop();
+                          },
+                        );
                     },
                   ),
           ),
         ],
       ),
     );
-  }
+    }
+
 }
+

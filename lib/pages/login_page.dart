@@ -1,26 +1,25 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pixes/components/button.dart';
+import 'package:pixes/appdata.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/pages/webview_page.dart';
 import 'package:pixes/utils/app_links.dart';
 import 'package:pixes/utils/translation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:file_selector/file_selector.dart';
+import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
   const LoginPage(this.callback, {super.key});
-
   final void Function() callback;
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
   bool checked = false;
-
   bool waitingForAuth = false;
-
   bool isLogging = false;
 
   @override
@@ -38,63 +37,106 @@ class _LoginPageState extends State<LoginPage> {
     return SizedBox(
       child: Center(
         child: Card(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            child: SizedBox(
-              width: 300,
-              height: 300,
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Login".tl,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          child: SizedBox(
+            width: 300,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Login".tl,
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FluentButton(
-                            onPressed: onContinue,
-                            enabled: checked,
-                            width: 96,
-                            child: Text("Continue".tl),
-                          ),
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: Text(
-                                "You need to complete the login operation in the browser window that will open."
-                                    .tl),
-                          )
-                        ],
+                ),
+                const SizedBox(height: 16),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FluentButton(
+                      onPressed: onContinue,
+                      enabled: checked,
+                      width: 96,
+                      child: Text("Continue".tl),
+                    ),
+                    const SizedBox(height: 16),
+                    if (App.isDesktop)
+                      FluentButton(
+                        onPressed: () async {
+                          final XFile? file = await openFile(
+                            acceptedTypeGroups: [
+                              XTypeGroup(label: 'Config', extensions: ['json'])
+                            ],
+                          );
+                          if (file != null) {
+                            final String content = await file.readAsString();
+                            try {
+                              final Map<String, dynamic> json = jsonDecode(content);
+                              final accountJson = json.containsKey('account')
+                                  ? json['account'] as Map<String, dynamic>
+                                  : json;
+                              appdata.account = Account.fromJson(accountJson);
+                              if (json.containsKey('settings')) {
+                                appdata.settings.addAll(json['settings'] as Map<String, dynamic>);
+                              }
+                              appdata.writeData();
+                              widget.callback();
+                            } catch (_) {
+                              if (mounted) {
+                                context.showToast(message: 'Invalid config file'.tl);
+                              }
+                            }
+                          }
+                        },
+                        width: 150,
+                        child: Text('Login with config'.tl),
                       ),
+                    if (appdata.account != null)
+                      FluentButton(
+                        onPressed: () async {
+                          setState(() => isLogging = true);
+                          var res = await Network().refreshToken();
+                          if (res.success) {
+                            widget.callback();
+                          } else {
+                            if (mounted) {
+                              context.showToast(
+                                  message: res.errorMessage ?? "Login failed".tl);
+                            }
+                            setState(() => isLogging = false);
+                          }
+                        },
+                        width: 150,
+                        child: Text("Login with saved credentials".tl),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      child: Text(
+                          "You need to complete the login operation in the browser window that will open."
+                              .tl),
                     ),
-                  ),
-                  Row(
-                    children: [
-                      Checkbox(
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Checkbox(
                           checked: checked,
-                          onChanged: (value) => setState(() {
-                                checked = value ?? false;
-                              })),
-                      const SizedBox(
-                        width: 8,
-                      ),
-                      Expanded(
-                        child: Text("I understand pixes is a free unofficial application.".tl),
-                      )
-                    ],
-                  )
-                ],
-              ),
-            )),
+                          onChanged: (v) => setState(() => checked = v!),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text("I understand pixes is a free unofficial application.".tl),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -103,46 +145,47 @@ class _LoginPageState extends State<LoginPage> {
     return SizedBox(
       child: Center(
         child: Card(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            child: SizedBox(
-              width: 300,
-              height: 300,
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Waiting...".tl,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          child: SizedBox(
+            width: 300,
+            height: 300,
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Waiting...".tl,
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      child: Text(
+                          "Waiting for authentication. Please finished in the browser."
+                              .tl),
                     ),
                   ),
-                  Expanded(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        child: Text(
-                            "Waiting for authentication. Please finished in the browser."
-                                .tl),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Button(
-                          child: Text("Back".tl),
-                          onPressed: () {
-                            setState(() {
-                              waitingForAuth = false;
-                            });
-                          }),
-                      const Spacer(),
-                    ],
-                  )
-                ],
-              ),
-            )),
+                ),
+                Row(
+                  children: [
+                    Button(
+                        child: Text("Back".tl),
+                        onPressed: () {
+                          setState(() {
+                            waitingForAuth = false;
+                          });
+                        }),
+                    const Spacer(),
+                  ],
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -151,28 +194,27 @@ class _LoginPageState extends State<LoginPage> {
     return SizedBox(
       child: Center(
         child: Card(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-            child: SizedBox(
-              width: 300,
-              height: 300,
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      "Logging in".tl,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          child: SizedBox(
+            width: 300,
+            height: 300,
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Logging in".tl,
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
                   ),
-                  const Expanded(
-                    child: Center(
-                      child: ProgressRing(),
-                    ),
-                  ),
-                ],
-              ),
-            )),
+                ),
+                const Expanded(
+                  child: Center(child: ProgressRing()),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -184,33 +226,32 @@ class _LoginPageState extends State<LoginPage> {
         context: context,
         barrierDismissible: true,
         builder: (context) => ContentDialog(
-            title: Text("Choose a way to login".tl),
-            content: Text("${"Use Webview: you cannot sign in with Google.".tl}"
-                "\n\n"
-                "${"Use an external browser: You can sign in using Google. However, some browsers may not be compatible with the application".tl}"),
-            actions: [
-              Button(
-                child: Text("Webview".tl),
-                onPressed: () {
-                  useExternal = false;
-                  App.rootNavigatorKey.currentState!.pop();
-                },
-              ),
-              Button(
-                child: Text("External browser".tl),
-                onPressed: () {
-                  useExternal = true;
-                  App.rootNavigatorKey.currentState!.pop();
-                },
-              )
-            ]),
+          title: Text("Choose a way to login".tl),
+          content: Text(
+              "${"Use Webview: you cannot sign in with Google.".tl}\n\n${"Use an external browser: You can sign in using Google. However, some browsers may not be compatible with the application".tl}"),
+          actions: [
+            Button(
+              child: Text("Webview".tl),
+              onPressed: () {
+                useExternal = false;
+                App.rootNavigatorKey.currentState!.pop();
+              },
+            ),
+            Button(
+              child: Text("External browser".tl),
+              onPressed: () {
+                useExternal = true;
+                App.rootNavigatorKey.currentState!.pop();
+              },
+            )
+          ],
+        ),
       );
     } else {
       useExternal = true;
     }
-    if (useExternal == null) {
-      return;
-    }
+    if (useExternal == null) return;
+
     var url = await Network().generateWebviewUrl();
     onLink = (uri) {
       if (uri.scheme == "pixiv") {
@@ -220,9 +261,7 @@ class _LoginPageState extends State<LoginPage> {
       }
       return false;
     };
-    setState(() {
-      waitingForAuth = true;
-    });
+    setState(() => waitingForAuth = true);
     if (!useExternal! && mounted) {
       context.to(() => WebviewPage(
             url,
@@ -250,9 +289,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         context.showToast(message: res.errorMessage!);
       }
-      setState(() {
-        isLogging = false;
-      });
+      setState(() => isLogging = false);
     } else {
       widget.callback();
     }

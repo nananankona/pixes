@@ -46,8 +46,12 @@ class _Appdata {
     "hideEmail": false,
     "hideAccountIcon": false,
     "hideAccountName": false,
-    "customFont": "",
-  };
+     "customFont": "",
+     "privateMode": false,
+     "lockEnabled": false,
+     "lockPassword": "",
+     "lockPin": "",
+   };
 
   bool lock = false;
 
