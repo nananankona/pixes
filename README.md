@@ -56,7 +56,7 @@ You must register the `pixiv` scheme in the `.desktop` file, otherwise the login
 Requires a self-hosted Supabase project.
 
 1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. Go to **Settings → API** and copy your **anon key**
+2. Go to **Settings → API** and copy your **anon key**(or**service_role**)
 3. In pixes, open **Settings → Sync** and enter your Supabase URL and anon key
 4. Tap **Test Connection** – follow the in-app setup guide to run the SQL commands
 5. Enable **Sync** – your search history, browsing history, and settings will sync across devices automatically
