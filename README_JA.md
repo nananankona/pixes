@@ -20,6 +20,7 @@
 - PINロック
 - データエクスポート / インポート
 - トークンログイン（設定ファイルによるログイン）
+- Supabase同期（検索履歴・閲覧履歴・設定をデバイス間で同期）
 
 [English README](README.md)
 
@@ -49,6 +50,16 @@
 
 その他のLinuxディストリビューションでは `flutter build linux` でビルド可能。
 ログインを機能させるには `.desktop` ファイルに `pixiv` スキームを登録する必要があります。
+
+## 同期（デバイス間）
+
+自己ホストのSupabaseプロジェクトが必要です。
+
+1. [supabase.com](https://supabase.com) でSupabaseプロジェクトを作成
+2. **Settings → API** から **anon key** をコピー
+3. pixesの **設定 → Sync** を開き、Supabase URLとanon keyを入力
+4. **接続テスト** をタップ -- アプリ内のセットアップガイドに従ってSQLを実行
+5. **同期を有効化** -- 検索履歴・閲覧履歴・設定が自動で同期されます
 
 ## スクリーンショット
 

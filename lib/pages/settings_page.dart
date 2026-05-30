@@ -12,7 +12,9 @@ import 'package:pixes/components/message.dart';
 import 'package:pixes/components/page_route.dart';
 import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/app.dart';
+import 'package:pixes/foundation/history.dart';
 import 'package:pixes/pages/main_page.dart';
+import 'package:pixes/pages/sync_page.dart';
 import 'package:pixes/utils/io.dart';
 import 'package:pixes/utils/translation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -96,9 +98,11 @@ class _SettingsPageState extends State<SettingsPage> {
           buildDownload(),
            buildHeader("Appearance".tl),
            buildAppearance(),
-           buildHeader("Security".tl),
-           buildSecurity(),
-           buildHeader("About".tl),
+            buildHeader("Security".tl),
+            buildSecurity(),
+            buildHeader("Sync".tl),
+            buildSync(),
+            buildHeader("About".tl),
            buildAbout(),
           SliverPadding(
               padding: EdgeInsets.only(bottom: context.padding.bottom)),
@@ -215,14 +219,37 @@ class _SettingsPageState extends State<SettingsPage> {
           buildItem(
             title: "Download Path".tl,
             subtitle: appdata.settings["downloadPath"],
-            action: App.isMacOS
-                ? _MacosDownloadPathSelectButton(onSelected: (path) {
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (App.isMacOS)
+                  _MacosDownloadPathSelectButton(onSelected: (path) {
                     setState(() {
                       appdata.settings["downloadPath"] = path;
                     });
                     appdata.writeSettings();
                   })
-                : Button(
+                else ...[
+                  Button(
+                    child: Text("Browse".tl).fixWidth(64),
+                    onPressed: () async {
+                      if (Platform.isIOS) {
+                        showToast(context, message: "Unsupported platform".tl);
+                        return;
+                      }
+                      final String? dir = await getDirectoryPath(
+                        initialDirectory: appdata.settings["downloadPath"],
+                      );
+                      if (dir != null) {
+                        setState(() {
+                          appdata.settings["downloadPath"] = dir;
+                        });
+                        appdata.writeSettings();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Button(
                     child: Text("Manage".tl).fixWidth(64),
                     onPressed: () {
                       if (Platform.isIOS) {
@@ -241,6 +268,19 @@ class _SettingsPageState extends State<SettingsPage> {
                             },
                           ));
                     }),
+                  const SizedBox(width: 8),
+                  Button(
+                    child: Text("Reset".tl).fixWidth(64),
+                    onPressed: () {
+                      setState(() {
+                        appdata.settings["downloadPath"] = null;
+                      });
+                      appdata.writeSettings();
+                    },
+                  ),
+                ],
+              ],
+            ),
           ),
           buildItem(
             title: "Subpath".tl,
@@ -639,9 +679,23 @@ class _SettingsPageState extends State<SettingsPage> {
               action: Button(
                 child: Text("Export".tl).fixWidth(64),
                 onPressed: () async {
+                  final browsingHistory = HistoryManager().getAll().map((h) => {
+                    'id': h.id,
+                    'imgPath': h.imgPath,
+                    'time': h.time.millisecondsSinceEpoch,
+                    'imageCount': h.imageCount,
+                    'isR18': h.isR18 ? 1 : 0,
+                    'isR18G': h.isR18G ? 1 : 0,
+                    'isAi': h.isAi ? 1 : 0,
+                    'isGif': h.isGif ? 1 : 0,
+                    'width': h.width,
+                    'height': h.height,
+                  }).toList();
                   final jsonData = jsonEncode({
                     "settings": appdata.settings,
                     "account": appdata.account?.toJson(),
+                    "searchHistory": appdata.getSearchHistory().map((e) => e.toJson()).toList(),
+                    "browsingHistory": browsingHistory,
                   });
                   final tempFile = File('${Directory.systemTemp.path}/pixes_export_${DateTime.now().millisecondsSinceEpoch}.json');
                   await tempFile.writeAsString(jsonData);
@@ -668,9 +722,82 @@ class _SettingsPageState extends State<SettingsPage> {
                     if (map.containsKey('account') && map['account'] != null) {
                       appdata.account = Account.fromJson(map['account']);
                     }
+                    if (map.containsKey('searchHistory')) {
+                      final list = (map['searchHistory'] as List)
+                          .map((e) => SearchHistoryEntry.fromJson(e as Map<String, dynamic>))
+                          .toList();
+                      appdata.importSearchHistory(list);
+                    }
+                    if (map.containsKey('browsingHistory')) {
+                      final list = (map['browsingHistory'] as List).map((h) => IllustHistory(
+                        h['id'],
+                        h['imgPath'],
+                        DateTime.fromMillisecondsSinceEpoch(h['time']),
+                        h['imageCount'],
+                        h['isR18'] == 1,
+                        h['isR18G'] == 1,
+                        h['isAi'] == 1,
+                        h['isGif'] == 1,
+                        h['width'],
+                        h['height'],
+                      )).toList();
+                      HistoryManager().importAll(list);
+                    }
                     appdata.writeData();
                     StateController.findOrNull(tag: "MyApp")?.update();
                   }
+                },
+              )),
+          buildItem(
+              title: "Search history limit".tl,
+              subtitle: (appdata.settings["searchHistoryLimit"] as int? ?? 50) <= 0
+                  ? "Unlimited".tl
+                  : appdata.settings["searchHistoryLimit"].toString(),
+              action: Button(
+                child: Text("Manage".tl).fixWidth(64),
+                onPressed: () async {
+                  int value = appdata.settings["searchHistoryLimit"] as int? ?? 50;
+                  await showDialog(
+                    context: context,
+                    builder: (c) => ContentDialog(
+                      title: Text("Search history limit".tl),
+                      content: StatefulBuilder(
+                        builder: (context, setDialogState) => Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text("Set 0 for unlimited".tl),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: 100,
+                              child: NumberBox<int>(
+                                value: value,
+                                mode: SpinButtonPlacementMode.none,
+                                min: 0,
+                                max: 99999,
+                                onChanged: (v) => setDialogState(() { if (v != null) value = v; }),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      actions: [
+                        Button(
+                          child: Text("Cancel".tl),
+                          onPressed: () => c.pop(),
+                        ),
+                        FilledButton(
+                          child: Text("Save".tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["searchHistoryLimit"] = value;
+                            });
+                            appdata.writeData();
+                            c.pop();
+                          },
+                        ),
+                      ],
+                    ),
+                  );
                 },
               )),
         ],
@@ -678,8 +805,27 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     }
 
-}
+  Widget buildSync() {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          buildItem(
+              title: "Sync Settings".tl,
+              subtitle: appdata.settings["syncEnabled"] == true
+                  ? "Enabled".tl
+                  : "Disabled".tl,
+              action: Button(
+                child: Text("Open".tl).fixWidth(64),
+                onPressed: () {
+                  context.to(() => const SyncPage());
+                },
+              )),
+        ],
+      ),
+    );
+  }
 
+}
 
 class _SetSingleFieldPage extends StatefulWidget {
   const _SetSingleFieldPage(this.title, this.field, {this.check});

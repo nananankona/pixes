@@ -62,37 +62,36 @@ class _LoginPageState extends State<LoginPage> {
                       child: Text("Continue".tl),
                     ),
                     const SizedBox(height: 16),
-                    if (App.isDesktop)
-                      FluentButton(
-                        onPressed: () async {
-                          final XFile? file = await openFile(
-                            acceptedTypeGroups: [
-                              XTypeGroup(label: 'Config', extensions: ['json'])
-                            ],
-                          );
-                          if (file != null) {
-                            final String content = await file.readAsString();
-                            try {
-                              final Map<String, dynamic> json = jsonDecode(content);
-                              final accountJson = json.containsKey('account')
-                                  ? json['account'] as Map<String, dynamic>
-                                  : json;
-                              appdata.account = Account.fromJson(accountJson);
-                              if (json.containsKey('settings')) {
-                                appdata.settings.addAll(json['settings'] as Map<String, dynamic>);
-                              }
-                              appdata.writeData();
-                              widget.callback();
-                            } catch (_) {
-                              if (mounted) {
-                                context.showToast(message: 'Invalid config file'.tl);
-                              }
+                    FluentButton(
+                      onPressed: () async {
+                        final XFile? file = await openFile(
+                          acceptedTypeGroups: [
+                            XTypeGroup(label: 'Config', extensions: ['json'])
+                          ],
+                        );
+                        if (file != null) {
+                          final String content = await file.readAsString();
+                          try {
+                            final Map<String, dynamic> json = jsonDecode(content);
+                            final accountJson = json.containsKey('account')
+                                ? json['account'] as Map<String, dynamic>
+                                : json;
+                            appdata.account = Account.fromJson(accountJson);
+                            if (json.containsKey('settings')) {
+                              appdata.settings.addAll(json['settings'] as Map<String, dynamic>);
+                            }
+                            appdata.writeData();
+                            widget.callback();
+                          } catch (_) {
+                            if (mounted) {
+                              context.showToast(message: 'Invalid config file'.tl);
                             }
                           }
-                        },
-                        width: 150,
-                        child: Text('Login with config'.tl),
-                      ),
+                        }
+                      },
+                      width: 150,
+                      child: Text('Login with config'.tl),
+                    ),
                     if (appdata.account != null)
                       FluentButton(
                         onPressed: () async {

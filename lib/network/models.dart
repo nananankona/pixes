@@ -354,6 +354,68 @@ class SearchOptions {
   AgeLimit ageLimit = AgeLimit.unlimited;
 }
 
+class SearchHistoryEntry {
+  final String keyword;
+  final int searchType;
+  final KeywordMatchType matchType;
+  final FavoriteNumber favoriteNumber;
+  final SearchSort sort;
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final AgeLimit ageLimit;
+
+  SearchHistoryEntry({
+    required this.keyword,
+    required this.searchType,
+    required this.matchType,
+    required this.favoriteNumber,
+    required this.sort,
+    this.startTime,
+    this.endTime,
+    required this.ageLimit,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'keyword': keyword,
+    'searchType': searchType,
+    'matchType': matchType.name,
+    'favoriteNumber': favoriteNumber.name,
+    'sort': sort.name,
+    'startTime': startTime?.toIso8601String(),
+    'endTime': endTime?.toIso8601String(),
+    'ageLimit': ageLimit.name,
+  };
+
+  factory SearchHistoryEntry.fromJson(Map<String, dynamic> json) {
+    KeywordMatchType? matchType;
+    for (var e in KeywordMatchType.values) {
+      if (e.name == json['matchType']) matchType = e;
+    }
+    FavoriteNumber? favoriteNumber;
+    for (var e in FavoriteNumber.values) {
+      if (e.name == json['favoriteNumber']) favoriteNumber = e;
+    }
+    SearchSort? sort;
+    for (var e in SearchSort.values) {
+      if (e.name == json['sort']) sort = e;
+    }
+    AgeLimit? ageLimit;
+    for (var e in AgeLimit.values) {
+      if (e.name == json['ageLimit']) ageLimit = e;
+    }
+    return SearchHistoryEntry(
+      keyword: json['keyword'] as String,
+      searchType: json['searchType'] as int,
+      matchType: matchType ?? KeywordMatchType.tagsPartialMatches,
+      favoriteNumber: favoriteNumber ?? FavoriteNumber.unlimited,
+      sort: sort ?? SearchSort.newToOld,
+      startTime: json['startTime'] != null ? DateTime.tryParse(json['startTime'] as String) : null,
+      endTime: json['endTime'] != null ? DateTime.tryParse(json['endTime'] as String) : null,
+      ageLimit: ageLimit ?? AgeLimit.unlimited,
+    );
+  }
+}
+
 /*
 json:
 {

@@ -1,4 +1,5 @@
 import 'package:pixes/foundation/app.dart';
+import 'package:pixes/services/sync_service.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:pixes/network/models.dart';
 
@@ -69,6 +70,7 @@ class HistoryManager {
         )
       ''');
     }
+    syncService.notifyChange();
   }
 
   List<IllustHistory> getHistories(int page) {
@@ -98,5 +100,47 @@ class HistoryManager {
       select count(*) from history
     ''');
     return rows.first.values.first! as int;
+  }
+
+  List<IllustHistory> getAll() {
+    var rows = _db.select('''
+      select * from history order by time desc
+    ''');
+    List<IllustHistory> res = [];
+    for (var row in rows) {
+      res.add(IllustHistory(
+          row['id'],
+          row['imgPath'],
+          DateTime.fromMillisecondsSinceEpoch(row['time']),
+          row['imageCount'],
+          row['isR18'] == 1,
+          row['isR18g'] == 1,
+          row['isAi'] == 1,
+          row['isGif'] == 1,
+          row['width'],
+          row['height']));
+    }
+    return res;
+  }
+
+  void importAll(List<IllustHistory> list) {
+    _db.execute('delete from history');
+    for (var h in list) {
+      _db.execute('''
+        insert into history (id, imgPath, time, imageCount, isR18, isR18g, isAi, isGif, width, height)
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        h.id,
+        h.imgPath,
+        h.time.millisecondsSinceEpoch,
+        h.imageCount,
+        h.isR18 ? 1 : 0,
+        h.isR18G ? 1 : 0,
+        h.isAi ? 1 : 0,
+        h.isGif ? 1 : 0,
+        h.width,
+        h.height
+      ]);
+    }
   }
 }

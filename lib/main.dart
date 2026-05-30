@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:io";
 import "dart:ui";
-import "dart:io";
 
 import "package:dynamic_color/dynamic_color.dart";
 import "package:fluent_ui/fluent_ui.dart";
@@ -18,12 +17,15 @@ import "package:pixes/foundation/log.dart";
 import "package:pixes/network/app_dio.dart";
 import "package:pixes/pages/main_page.dart";
 import "package:pixes/pages/lock/lock_page.dart";
+import "package:pixes/services/sync_service.dart";
 import "package:pixes/utils/app_links.dart";
 import "package:pixes/utils/loop.dart";
 import "package:pixes/utils/translation.dart";
 import "package:pixes/utils/update.dart";
 import "package:pixes/utils/window.dart";
 import "package:window_manager/window_manager.dart";
+
+AppLifecycleListener? _lifecycleListener;
 
 void main() {
   runZonedGuarded(() async {
@@ -37,6 +39,7 @@ void main() {
     await appdata.readData();
     await Translation.init();
     HistoryManager().init();
+    syncService.init();
     handleLinks();
     if (App.isDesktop) {
       await WindowManager.instance.ensureInitialized();
@@ -64,6 +67,9 @@ void main() {
     Loop.start();
     Log.info("APP", "Application started");
     runApp(const MyApp());
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () => syncService.init(),
+    );
   }, (error, stack) {
     Log.error("Unhandled Exception", "$error\n$stack");
   });

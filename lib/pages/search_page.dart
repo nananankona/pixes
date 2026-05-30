@@ -41,6 +41,8 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   int searchType = 0;
+  int historyKey = 0;
+  bool showHistory = false;
 
   void search(String text) {
     if (text.isURL && handleLink(Uri.parse(text))) {
@@ -57,10 +59,13 @@ class _SearchPageState extends State<SearchPage> {
       case 2:
         context.to(() => SearchUserResultPage(text));
       case 3:
+        appdata.addSearchHistory(text, 3);
         context.to(() => IllustPageWithId(text));
       case 4:
+        appdata.addSearchHistory(text, 4);
         context.to(() => UserInfoPage(text));
       case 5:
+        appdata.addSearchHistory(text, 5);
         context.to(() => NovelPageWithId(text));
     }
   }
@@ -73,6 +78,7 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           _SearchBar(
             searchType: searchType,
+            showHistory: showHistory,
             onTypeChanged: (type) {
               setState(() {
                 searchType = type;
@@ -83,11 +89,48 @@ class _SearchPageState extends State<SearchPage> {
                 return;
               }
               search(text);
+              setState(() => historyKey++);
+            },
+            onHistoryToggle: () {
+              setState(() {
+                showHistory = !showHistory;
+                historyKey++;
+              });
             },
           ),
-          const Expanded(
-            child: _TrendingTagsView(),
-          )
+          Expanded(
+            child: showHistory
+                ? _SearchHistoryView(
+                    key: ValueKey(historyKey),
+                    onSearch: (entry) {
+                      appdata.searchOptions.matchType = entry.matchType;
+                      appdata.searchOptions.favoriteNumber = entry.favoriteNumber;
+                      appdata.searchOptions.sort = entry.sort;
+                      appdata.searchOptions.startTime = entry.startTime;
+                      appdata.searchOptions.endTime = entry.endTime;
+                      appdata.searchOptions.ageLimit = entry.ageLimit;
+                      switch (entry.searchType) {
+                        case 0:
+                          context.to(() => SearchResultPage(entry.keyword));
+                        case 1:
+                          context.to(() => SearchNovelResultPage(entry.keyword));
+                        case 2:
+                          context.to(() => SearchUserResultPage(entry.keyword));
+                        case 3:
+                          context.to(() => IllustPageWithId(entry.keyword));
+                        case 4:
+                          context.to(() => UserInfoPage(entry.keyword));
+                        case 5:
+                          context.to(() => NovelPageWithId(entry.keyword));
+                      }
+                    },
+                    onClearAll: () {
+                      appdata.clearSearchHistory();
+                      setState(() => historyKey++);
+                    },
+                  )
+                : const _TrendingTagsView(),
+          ),
         ],
       ),
     );
@@ -182,6 +225,180 @@ class _TrendingTagsViewState
   @override
   Future<Res<List<TrendingTag>>> loadData() {
     return Network().getHotTags();
+  }
+}
+
+class _SearchHistoryView extends StatefulWidget {
+  const _SearchHistoryView({
+    super.key,
+    required this.onSearch,
+    required this.onClearAll,
+  });
+
+  final void Function(SearchHistoryEntry) onSearch;
+  final VoidCallback onClearAll;
+
+  @override
+  State<_SearchHistoryView> createState() => _SearchHistoryViewState();
+}
+
+class _SearchHistoryViewState extends State<_SearchHistoryView> {
+  static const int pageSize = 20;
+  final _scrollController = ScrollController();
+  List<SearchHistoryEntry> _displayed = [];
+  List<SearchHistoryEntry> _all = [];
+  int _loaded = 0;
+  int _filterType = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMore());
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  List<SearchHistoryEntry> _filtered(List<SearchHistoryEntry> all) {
+    if (_filterType < 0) return all;
+    return all.where((e) => e.searchType == _filterType).toList();
+  }
+
+  void _loadMore() {
+    _all = appdata.getSearchHistory();
+    final limit = appdata.settings["searchHistoryLimit"] as int? ?? 50;
+    final capped = limit > 0 && _all.length > limit ? _all.sublist(0, limit) : _all;
+    final filtered = _filtered(capped);
+    if (_loaded >= filtered.length) return;
+    final end = (_loaded + pageSize > filtered.length) ? filtered.length : _loaded + pageSize;
+    setState(() {
+      _displayed.addAll(filtered.sublist(_loaded, end));
+      _loaded = end;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_displayed.isEmpty) {
+      return Center(child: Text("No search history".tl));
+    }
+    return Column(
+      children: [
+        Row(
+          children: [
+            const SizedBox(width: 16),
+            Text("Search History".tl, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            Button(
+              onPressed: widget.onClearAll,
+              child: Text("Clear all".tl),
+            ),
+            const SizedBox(width: 16),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 32,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _filterChip("All".tl, -1),
+              for (var i = 0; i < searchTypes.length; i++)
+                _filterChip(searchTypes[i].tl, i),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ListView.builder(
+            controller: _scrollController,
+            itemCount: _displayed.length + 1,
+            itemBuilder: (context, index) {
+              if (index == _displayed.length) {
+                final limit = appdata.settings["searchHistoryLimit"] as int? ?? 50;
+                final capped = limit > 0 && _all.length > limit ? _all.sublist(0, limit) : _all;
+                final filtered = _filtered(capped);
+                if (_loaded >= filtered.length) {
+                  return const SizedBox.shrink();
+                }
+                return const Center(child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: ProgressRing(),
+                ));
+              }
+              final entry = _displayed[index];
+              final typeLabel = searchTypes.length > entry.searchType
+                  ? searchTypes[entry.searchType].tl
+                  : "";
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+                child: GestureDetector(
+                  onTap: () => widget.onSearch(entry),
+                  child: Card(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Row(
+                        children: [
+                          Icon(FluentIcons.clock, size: 14, color: ColorScheme.of(context).onSurface.toOpacity(0.6)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(entry.keyword, style: const TextStyle(fontWeight: FontWeight.w500)),
+                                const SizedBox(height: 2),
+                                Text(
+                                  "$typeLabel / ${entry.sort.toString().tl}",
+                                  style: TextStyle(fontSize: 12, color: ColorScheme.of(context).onSurface.toOpacity(0.6)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(FluentIcons.chevron_right, size: 14, color: ColorScheme.of(context).onSurface.toOpacity(0.4)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _filterChip(String label, int type) {
+    final selected = _filterType == type;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ToggleButton(
+        checked: selected,
+        onChanged: (value) {
+          setState(() {
+            _filterType = type;
+            _displayed.clear();
+            _loaded = 0;
+            _all = appdata.getSearchHistory();
+          });
+          _loadMore();
+        },
+        child: Text(label, style: const TextStyle(fontSize: 13)),
+      ),
+    );
   }
 }
 
@@ -512,6 +729,9 @@ class _SearchResultPageState
     if (nextUrl == "end") {
       return Res.error("No more data");
     }
+    if (nextUrl == null) {
+      appdata.addSearchHistory(keyword, 0);
+    }
     var res = nextUrl == null
         ? await Network().search(keyword, appdata.searchOptions)
         : await Network().getIllustsWithNextUrl(nextUrl!);
@@ -567,6 +787,9 @@ class _SearchUserResultPageState
   Future<Res<List<UserPreview>>> loadData(page) async {
     if (nextUrl == "end") {
       return Res.error("No more data");
+    }
+    if (nextUrl == null) {
+      appdata.addSearchHistory(widget.keyword, 2);
     }
     var res = await Network().searchUsers(widget.keyword, nextUrl);
     if (!res.error) {
@@ -707,6 +930,9 @@ class _SearchNovelResultPageState
     if (nextUrl == "end") {
       return Res.error("No more data");
     }
+    if (nextUrl == null) {
+      appdata.addSearchHistory(keyword, 1);
+    }
     var res = nextUrl == null
         ? await Network().searchNovels(keyword, appdata.searchOptions)
         : await Network().getNovelsWithNextUrl(nextUrl!);
@@ -723,6 +949,8 @@ class _SearchBar extends StatefulWidget {
     required this.searchType,
     required this.onTypeChanged,
     required this.onSearch,
+    this.showHistory = false,
+    this.onHistoryToggle,
   });
 
   final int searchType;
@@ -730,6 +958,10 @@ class _SearchBar extends StatefulWidget {
   final void Function(int) onTypeChanged;
 
   final void Function(String) onSearch;
+
+  final bool showHistory;
+
+  final VoidCallback? onHistoryToggle;
 
   @override
   State<_SearchBar> createState() => _SearchBarState();
@@ -888,7 +1120,19 @@ class _SearchBarState extends State<_SearchBar> {
                         isNovel: widget.searchType == 1,
                       )));
                     },
-                  )
+                  ),
+                  const SizedBox(width: 4),
+                  Button(
+                    child: SizedBox(
+                      height: 42,
+                      child: Center(
+                        child: Icon(
+                          widget.showHistory ? FluentIcons.history : FluentIcons.clock,
+                        ),
+                      ),
+                    ),
+                    onPressed: widget.onHistoryToggle,
+                  ),
                 ],
               ),
             );

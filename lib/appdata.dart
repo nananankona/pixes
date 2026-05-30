@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pixes/services/sync_service.dart';
 import 'package:pixes/utils/io.dart';
 
 import 'foundation/app.dart';
@@ -46,12 +47,13 @@ class _Appdata {
     "hideEmail": false,
     "hideAccountIcon": false,
     "hideAccountName": false,
-     "customFont": "",
-     "privateMode": false,
-     "lockEnabled": false,
-     "lockPassword": "",
-     "lockPin": "",
-   };
+    "customFont": "",
+    "privateMode": false,
+    "lockEnabled": false,
+    "lockPassword": "",
+    "lockPin": "",
+    "searchHistoryLimit": 50,
+  };
 
   bool lock = false;
 
@@ -60,11 +62,15 @@ class _Appdata {
       await Future.delayed(const Duration(milliseconds: 20));
     }
     lock = true;
-    await File("${App.dataPath}/account.json")
-        .writeAsString(jsonEncode(account));
-    await File("${App.dataPath}/settings.json")
-        .writeAsString(jsonEncode(settings));
-    lock = false;
+    try {
+      await File("${App.dataPath}/account.json")
+          .writeAsString(jsonEncode(account));
+      await File("${App.dataPath}/settings.json")
+          .writeAsString(jsonEncode(settings));
+    } finally {
+      lock = false;
+    }
+    syncService.notifyChange();
   }
 
   void writeSettings() async {
@@ -72,9 +78,13 @@ class _Appdata {
       await Future.delayed(const Duration(milliseconds: 20));
     }
     lock = true;
-    await File("${App.dataPath}/settings.json")
-        .writeAsString(jsonEncode(settings));
-    lock = false;
+    try {
+      await File("${App.dataPath}/settings.json")
+          .writeAsString(jsonEncode(settings));
+    } finally {
+      lock = false;
+    }
+    syncService.notifyChange();
   }
 
   Future<void> readData() async {
@@ -106,6 +116,69 @@ class _Appdata {
     if (App.isMacOS) {
       await _ensureMacOSDownloadPathPermission();
     }
+  }
+
+  List<SearchHistoryEntry>? _cachedHistory;
+
+  String get _historyPath => "${App.dataPath}/search_history.json";
+
+  List<SearchHistoryEntry> _loadHistoryFromFile() {
+    try {
+      final file = File(_historyPath);
+      if (!file.existsSync()) return [];
+      final raw = file.readAsStringSync();
+      if (raw.isEmpty) return [];
+      final list = jsonDecode(raw) as List;
+      return list.map((e) => SearchHistoryEntry.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  void _saveHistoryToFile(List<SearchHistoryEntry> list) {
+    try {
+      File(_historyPath).writeAsStringSync(jsonEncode(list.map((e) => e.toJson()).toList()));
+    } catch (_) {}
+  }
+
+  void addSearchHistory(String keyword, int searchType) {
+    final entry = SearchHistoryEntry(
+      keyword: keyword,
+      searchType: searchType,
+      matchType: searchOptions.matchType,
+      favoriteNumber: searchOptions.favoriteNumber,
+      sort: searchOptions.sort,
+      startTime: searchOptions.startTime,
+      endTime: searchOptions.endTime,
+      ageLimit: searchOptions.ageLimit,
+    );
+    final list = getSearchHistory();
+    list.removeWhere((e) => e.keyword == keyword && e.searchType == searchType);
+    list.insert(0, entry);
+    final limit = settings["searchHistoryLimit"] as int? ?? 50;
+    if (limit > 0 && list.length > limit) list.removeRange(limit, list.length);
+    _cachedHistory = list;
+    _saveHistoryToFile(list);
+    syncService.notifyChange();
+  }
+
+  List<SearchHistoryEntry> getSearchHistory() {
+    if (_cachedHistory == null) {
+      _cachedHistory = _loadHistoryFromFile();
+    }
+    return List.from(_cachedHistory!);
+  }
+
+  void clearSearchHistory() {
+    _cachedHistory = [];
+    _saveHistoryToFile([]);
+    syncService.notifyChange();
+  }
+
+  void importSearchHistory(List<SearchHistoryEntry> list) {
+    _cachedHistory = List.from(list);
+    _saveHistoryToFile(list);
+    syncService.notifyChange();
   }
 
   Future<void> _ensureMacOSDownloadPathPermission() async {
