@@ -312,7 +312,12 @@ jobs:
       contents: write
 
     if: |
-      always() &&
+      !cancelled() &&
+      needs.Build_IOS.result != 'failure' &&
+      needs.Build_Android.result != 'failure' &&
+      needs.Build_Windows.result != 'failure' &&
+      needs.Build_Linux.result != 'failure' &&
+      needs.Build_Linux_ARM64.result != 'failure' &&
       (
         github.event_name == 'release' ||
         github.event_name == 'workflow_dispatch'
