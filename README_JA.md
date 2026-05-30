@@ -56,7 +56,7 @@
 自己ホストのSupabaseプロジェクトが必要です。
 
 1. [supabase.com](https://supabase.com) でSupabaseプロジェクトを作成
-2. **Settings → API** から **anon key** をコピー
+2. **Settings → API** から **anon key**(または**service_role**) をコピー
 3. pixesの **設定 → Sync** を開き、Supabase URLとanon keyを入力
 4. **接続テスト** をタップ -- アプリ内のセットアップガイドに従ってSQLを実行
 5. **同期を有効化** -- 検索履歴・閲覧履歴・設定が自動で同期されます
