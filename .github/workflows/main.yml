@@ -233,6 +233,9 @@ jobs:
       if: github.event.inputs.dev_build != 'true'
       env:
         CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_KEYSTORE_PASSWORD }}
+        # audioplayers_windows still uses <experimental/coroutine>; VS 17.14+/18
+        # turns the deprecation notice into a hard error without this macro.
+        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING
       run: |
         flutter pub get
         dart run msix:create -p ${{ env.CERTIFICATE_PASSWORD }} --install-certificate false
@@ -240,6 +243,8 @@ jobs:
     - name: build (Dev)
       if: github.event.inputs.dev_build == 'true'
       shell: bash
+      env:
+        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING
       run: |
         sed -i '/certificate_path:/d' pubspec.yaml
         flutter pub get
@@ -265,7 +270,7 @@ jobs:
 
     - run: |
         sudo apt-get update -y
-        sudo apt-get install -y ninja-build libgtk-3-dev webkit2gtk-4.1
+        sudo apt-get install -y ninja-build libgtk-3-dev webkit2gtk-4.1 libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
         dart pub global activate flutter_to_debian
 
     - run: python3 debian/build.py x64
