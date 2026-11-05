@@ -23,6 +23,9 @@ class _SyncPageState extends State<SyncPage> {
 
   bool _connecting = false;
   bool _syncing = false;
+  String _progressPhase = "";
+  int _progressDone = 0;
+  int _progressTotal = 0;
   bool _connected = false;
   bool _needsSetup = false;
   List<Map<String, dynamic>> _devices = [];
@@ -108,12 +111,28 @@ class _SyncPageState extends State<SyncPage> {
 
   Future<void> _syncNow() async {
     _save();
-    setState(() => _syncing = true);
-    await syncService.syncNow();
+    setState(() {
+      _syncing = true;
+      _progressPhase = "Syncing...";
+      _progressDone = 0;
+      _progressTotal = 0;
+    });
+    String? error;
+    try {
+      error = await syncService.syncNow(onProgress: (phase, done, total) {
+        if (!mounted) return;
+        setState(() {
+          _progressPhase = phase;
+          _progressDone = done;
+          _progressTotal = total;
+        });
+      });
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
     final code = syncService.lastStatusCode;
     if (!mounted) return;
-    setState(() => _syncing = false);
-    if (code != null && code >= 200 && code < 300) {
+    if (error == null && code != null && code >= 200 && code < 300) {
       final devices = await syncService.getDevices();
       final counts = await syncService.getLocalCounts();
       if (!mounted) return;
@@ -129,7 +148,8 @@ class _SyncPageState extends State<SyncPage> {
         _connected = false;
         _needsSetup = syncService.needsSetup;
       });
-      context.showToast(message: "Sync failed ({code})".tl.replaceAll("{code}", "$code"));
+      context.showToast(
+          message: error ?? "Sync failed ({code})".tl.replaceAll("{code}", "$code"));
     }
   }
 
@@ -242,7 +262,7 @@ class _SyncPageState extends State<SyncPage> {
           // Actions
           Row(children: [
             FilledButton(
-              onPressed: _connecting ? null : _connect,
+              onPressed: (_connecting || _syncing) ? null : _connect,
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (_connecting) ...[
                   const SizedBox(width: 12, height: 12, child: ProgressRing(strokeWidth: 2)),
@@ -263,8 +283,12 @@ class _SyncPageState extends State<SyncPage> {
               ]),
             ),
             const SizedBox(width: 12),
-            Button(onPressed: () => context.pop(), child: Text("Back".tl)),
+            Button(onPressed: _syncing ? null : () => context.pop(), child: Text("Back".tl)),
           ]),
+          if (_syncing) ...[
+            const SizedBox(height: 12),
+            _progressCard(),
+          ],
           const SizedBox(height: 16),
 
           // ── Status (always visible) ──
@@ -298,8 +322,27 @@ class _SyncPageState extends State<SyncPage> {
     );
   }
 
-  Widget _statusCard() {
-    final searchCount = _counts['searchHistory'] ?? 0;
+  Widget _progressCard() {
+    final determinate = _progressTotal > 0;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_progressPhase.tl,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 8),
+          ProgressBar(
+            value: determinate ? _progressDone / _progressTotal * 100 : null,
+          ),
+          const SizedBox(height: 4),
+          Text(determinate ? "$_progressDone / $_progressTotal" : "...",
+              style: const TextStyle(fontSize: 12)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _statusCard() {    final searchCount = _counts['searchHistory'] ?? 0;
     final browseCount = _counts['browsingHistory'] ?? 0;
     final statusText = _connected ? "Connected".tl : "Disconnected".tl;
     final statusColor = _connected ? Colors.green : Colors.orange;

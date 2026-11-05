@@ -18,7 +18,7 @@ import "package:pixes/pages/novel_ranking_page.dart";
 import "package:pixes/pages/novel_recommendation_page.dart";
 import "package:pixes/pages/ranking.dart";
 import "package:pixes/pages/recommendation_page.dart";
-import "package:pixes/pages/login_page.dart" hide Text;
+import "package:pixes/pages/login_page.dart";
 import "package:pixes/pages/search_page.dart";
 import "package:pixes/pages/settings_page.dart";
 import "package:pixes/pages/user_info_page.dart";
@@ -382,6 +382,8 @@ class _MainPageState extends State<MainPage>
 
   final popValue = ValueNotifier(false);
 
+  DateTime? _lastBackPress;
+
   @override
   ValueListenable<bool> get canPopNotifier => popValue;
 
@@ -392,7 +394,25 @@ class _MainPageState extends State<MainPage>
     } else if (App.mainNavigatorKey?.currentState?.canPop() ?? false) {
       App.mainNavigatorKey?.currentState?.pop();
     } else {
-      SystemNavigator.pop();
+      // #37: avoid accidental exit on back button/gesture.
+      // First back goes home, second back within 2s exits.
+      final initialIndex = appdata.settings["initialPage"] ?? 4;
+      if (index != initialIndex) {
+        setState(() => index = initialIndex);
+        navigate(initialIndex);
+        return;
+      }
+      final now = DateTime.now();
+      if (_lastBackPress != null &&
+          now.difference(_lastBackPress!) < const Duration(seconds: 2)) {
+        SystemNavigator.pop();
+        return;
+      }
+      _lastBackPress = now;
+      final ctx = App.rootNavigatorKey.currentContext;
+      if (ctx != null) {
+        ctx.showToast(message: "Press back again to exit".tl);
+      }
     }
   }
 

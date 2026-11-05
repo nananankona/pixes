@@ -246,7 +246,8 @@ class TrendingTag {
 enum KeywordMatchType {
   tagsPartialMatches("Tags partial match"),
   tagsExactMatch("Tags exact match"),
-  titleOrDescriptionSearch("Title or description search");
+  mainText("Main Text"),
+  keyword("Labels, titles, and descriptions");
 
   final String text;
 
@@ -255,11 +256,18 @@ enum KeywordMatchType {
   @override
   toString() => text;
 
-  String toParam() => switch (this) {
-        KeywordMatchType.tagsPartialMatches => "partial_match_for_tags",
-        KeywordMatchType.tagsExactMatch => "exact_match_for_tags",
-        KeywordMatchType.titleOrDescriptionSearch => "title_and_caption"
-      };
+  String toParam([String? searchType]) {
+    if (searchType != "novel" && this == KeywordMatchType.mainText) {
+      return "keyword"; // mainText search for illustration is not supported
+    }
+
+    return switch (this) {
+      KeywordMatchType.tagsPartialMatches => "partial_match_for_tags",
+      KeywordMatchType.tagsExactMatch => "exact_match_for_tags",
+      KeywordMatchType.mainText => "text",
+      KeywordMatchType.keyword => "keyword",
+    };
+  }
 }
 
 enum FavoriteNumber {
@@ -352,6 +360,7 @@ class SearchOptions {
   DateTime? startTime;
   DateTime? endTime;
   AgeLimit ageLimit = AgeLimit.unlimited;
+  bool includeAiGeneratedWorks = false;
 }
 
 class SearchHistoryEntry {
@@ -363,6 +372,7 @@ class SearchHistoryEntry {
   final DateTime? startTime;
   final DateTime? endTime;
   final AgeLimit ageLimit;
+  final bool includeAiGeneratedWorks;
 
   SearchHistoryEntry({
     required this.keyword,
@@ -373,6 +383,7 @@ class SearchHistoryEntry {
     this.startTime,
     this.endTime,
     required this.ageLimit,
+    this.includeAiGeneratedWorks = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -384,12 +395,17 @@ class SearchHistoryEntry {
     'startTime': startTime?.toIso8601String(),
     'endTime': endTime?.toIso8601String(),
     'ageLimit': ageLimit.name,
+    'includeAiGeneratedWorks': includeAiGeneratedWorks,
   };
 
   factory SearchHistoryEntry.fromJson(Map<String, dynamic> json) {
     KeywordMatchType? matchType;
     for (var e in KeywordMatchType.values) {
       if (e.name == json['matchType']) matchType = e;
+    }
+    // Legacy value from before upstream fix #34
+    if (matchType == null && json['matchType'] == 'titleOrDescriptionSearch') {
+      matchType = KeywordMatchType.mainText;
     }
     FavoriteNumber? favoriteNumber;
     for (var e in FavoriteNumber.values) {
@@ -412,6 +428,7 @@ class SearchHistoryEntry {
       startTime: json['startTime'] != null ? DateTime.tryParse(json['startTime'] as String) : null,
       endTime: json['endTime'] != null ? DateTime.tryParse(json['endTime'] as String) : null,
       ageLimit: ageLimit ?? AgeLimit.unlimited,
+      includeAiGeneratedWorks: json['includeAiGeneratedWorks'] as bool? ?? false,
     );
   }
 }

@@ -105,3 +105,4 @@ msix_config:
   identity_name: dev.nyne.pixes
   logo_path: ios\Runner\Assets.xcassets\AppIcon.appiconset\AppIcon@3x.png
   capabilities: internetClient
+  protocol_activation: pixiv

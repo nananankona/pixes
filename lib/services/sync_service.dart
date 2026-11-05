@@ -7,6 +7,9 @@ import 'package:pixes/foundation/log.dart';
 import 'package:pixes/network/models.dart';
 import 'package:uuid/uuid.dart';
 
+/// Reports sync progress: phase label key, completed items, total items.
+typedef SyncProgressCallback = void Function(String phase, int done, int total);
+
 /*
 -- Run this SQL in your Supabase SQL Editor:
 create table if not exists sync_devices (
@@ -56,6 +59,7 @@ class SyncService {
   int? lastStatusCode;
   bool _stopped = false;
   bool _pulling = false;
+  bool _busy = false;
 
   String? get _url => appdata.settings["syncUrl"] as String?;
   String? get _key => appdata.settings["syncKey"] as String?;
@@ -112,6 +116,10 @@ class SyncService {
         'Accept': 'application/json',
       },
       validateStatus: (_) => true,
+      // Avoid hanging forever on a dead connection (was reported as UI freeze).
+      connectTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 60),
     ));
     return true;
   }
@@ -132,7 +140,7 @@ class SyncService {
   void notifyChange() {
     if (!enabled) return;
     if (_stopped) return;
-    if (_pulling) return;
+    if (_pulling || _busy) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 2), _pushAll);
   }
@@ -146,14 +154,14 @@ class SyncService {
     return r.statusCode != null && r.statusCode! >= 200 && r.statusCode! < 300;
   }
 
-  Future<void> _pullAll() async {
+  Future<void> _pullAll({SyncProgressCallback? onProgress}) async {
     if (!_ensureDio()) return;
     _pulling = true;
     try {
       final futures = <Future<void>>[];
-      futures.add(_pullSearchHistory());
-      futures.add(_pullBrowsingHistory());
-      if (syncSettingsEnabled) futures.add(_pullSettings());
+      futures.add(_pullSearchHistory(onProgress));
+      futures.add(_pullBrowsingHistory(onProgress));
+      if (syncSettingsEnabled) futures.add(_pullSettings(onProgress));
       await Future.wait(futures);
       await _upsertDevice();
     } finally {
@@ -161,21 +169,30 @@ class SyncService {
     }
   }
 
-  Future<void> _pushAll() async {
+  Future<void> _pushAll({SyncProgressCallback? onProgress}) async {
     if (!_ensureDio()) return;
     final futures = <Future<void>>[];
-    futures.add(_pushSearchHistory());
-    futures.add(_pushBrowsingHistory());
-    if (syncSettingsEnabled) futures.add(_pushSettings());
+    futures.add(_pushSearchHistory(onProgress));
+    futures.add(_pushBrowsingHistory(onProgress));
+    if (syncSettingsEnabled) futures.add(_pushSettings(onProgress));
     await Future.wait(futures);
     await _upsertDevice();
   }
 
-  Future<String?> syncNow() async {
+  Future<String?> syncNow({SyncProgressCallback? onProgress}) async {
     if (!_ensureDio()) return "Sync not configured";
     _stopped = false;
-    await _pushAll();
-    await _pullAll();
+    if (_busy) return "Sync already running";
+    _busy = true;
+    try {
+      await _pushAll(onProgress: onProgress);
+      await _pullAll(onProgress: onProgress);
+    } catch (e) {
+      Log.error("Sync", "syncNow failed: $e");
+      return e.toString();
+    } finally {
+      _busy = false;
+    }
     return null;
   }
 
@@ -194,7 +211,7 @@ class SyncService {
     }
   }
 
-  Future<void> _pullSettings() async {
+  Future<void> _pullSettings([SyncProgressCallback? onProgress]) async {
     if (!syncSettingsEnabled || _stopped) return;
     final res = await _dio!.get('/sync_settings?select=data,updated_at&id=eq.1');
     if (!_ok(res) || res.data == null || (res.data as List).isEmpty) return;
@@ -210,10 +227,12 @@ class SyncService {
       appdata.settings["syncSettingsUpdatedAt"] = remoteTime.toIso8601String();
       appdata.writeSettings();
     }
+    onProgress?.call("Pulling settings", 1, 1);
   }
 
-  Future<void> _pushSettings() async {
+  Future<void> _pushSettings([SyncProgressCallback? onProgress]) async {
     if (!syncSettingsEnabled || _stopped) return;
+    onProgress?.call("Pushing settings", 0, 1);
     final data = Map<String, dynamic>.from(appdata.settings);
     data.remove("syncKey");
     data.remove("syncUrl");
@@ -232,9 +251,10 @@ class SyncService {
     if (!_ok(res)) {
       Log.error("Sync", "Push settings failed: ${res.statusCode} ${res.statusMessage}");
     }
+    onProgress?.call("Pushing settings", 1, 1);
   }
 
-  Future<void> _pullSearchHistory() async {
+  Future<void> _pullSearchHistory([SyncProgressCallback? onProgress]) async {
     if (_stopped) return;
     final res = await _dio!.get('/sync_search_history?select=data,keyword,search_type,updated_at');
     if (!_ok(res) || res.data == null) return;
@@ -260,13 +280,16 @@ class SyncService {
       }
     }
     appdata.importSearchHistory(merged);
+    onProgress?.call("Pulling search history", 1, 1);
   }
 
-  Future<void> _pushSearchHistory() async {
+  Future<void> _pushSearchHistory([SyncProgressCallback? onProgress]) async {
     if (_stopped) return;
     final local = appdata.getSearchHistory();
     final now = DateTime.now().toIso8601String();
-    for (var entry in local) {
+    onProgress?.call("Pushing search history", 0, local.length);
+    for (var i = 0; i < local.length; i++) {
+      final entry = local[i];
       final res = await _dio!.post('/sync_search_history?on_conflict=keyword,search_type', data: {
         'keyword': entry.keyword,
         'search_type': entry.searchType,
@@ -277,10 +300,11 @@ class SyncService {
         Log.error("Sync", "Push search history failed: ${res.statusCode}");
         continue;
       }
+      onProgress?.call("Pushing search history", i + 1, local.length);
     }
   }
 
-  Future<void> _pullBrowsingHistory() async {
+  Future<void> _pullBrowsingHistory([SyncProgressCallback? onProgress]) async {
     if (_stopped) return;
     final res = await _dio!.get('/sync_browsing_history?select=data,illust_id,updated_at');
     if (!_ok(res) || res.data == null) return;
@@ -304,13 +328,16 @@ class SyncService {
     for (var e in local) { map[e.id] = e; }
     for (var e in remote) { map[e.id] = e; }
     HistoryManager().importAll(map.values.toList());
+    onProgress?.call("Pulling browsing history", 1, 1);
   }
 
-  Future<void> _pushBrowsingHistory() async {
+  Future<void> _pushBrowsingHistory([SyncProgressCallback? onProgress]) async {
     if (_stopped) return;
     final local = HistoryManager().getAll();
     final now = DateTime.now().toIso8601String();
-    for (var h in local) {
+    onProgress?.call("Pushing browsing history", 0, local.length);
+    for (var i = 0; i < local.length; i++) {
+      final h = local[i];
       final res = await _dio!.post('/sync_browsing_history?on_conflict=illust_id', data: {
         'illust_id': h.id,
         'data': {
@@ -331,6 +358,7 @@ class SyncService {
         Log.error("Sync", "Push browsing history failed: ${res.statusCode}");
         continue;
       }
+      onProgress?.call("Pushing browsing history", i + 1, local.length);
     }
   }
 

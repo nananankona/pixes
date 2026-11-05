@@ -109,6 +109,8 @@ class _SearchPageState extends State<SearchPage> {
                       appdata.searchOptions.startTime = entry.startTime;
                       appdata.searchOptions.endTime = entry.endTime;
                       appdata.searchOptions.ageLimit = entry.ageLimit;
+                      appdata.searchOptions.includeAiGeneratedWorks =
+                          entry.includeAiGeneratedWorks;
                       switch (entry.searchType) {
                         case 0:
                           context.to(() => SearchResultPage(entry.keyword));
@@ -473,6 +475,19 @@ class _SearchSettingsState extends State<SearchSettings> {
                           }
                         }))
                     .toList(),
+              )),
+          buildItem(
+              title: "Include AI-generated works".tl,
+              child: ToggleSwitch(
+                checked: appdata.searchOptions.includeAiGeneratedWorks,
+                onChanged: (value) {
+                  if (appdata.searchOptions.includeAiGeneratedWorks != value) {
+                    setState(() {
+                      appdata.searchOptions.includeAiGeneratedWorks = value;
+                    });
+                    widget.onChanged?.call();
+                  }
+                },
               )),
           if (!widget.isNovel)
             Card(

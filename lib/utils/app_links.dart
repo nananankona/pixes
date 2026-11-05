@@ -66,16 +66,42 @@ void handleLinks() async {
   if (App.isWindows) {
     _registerPixiv();
   }
-  AppLinks().uriLinkStream.listen((uri) async {
-    if (_firstLink) {
-      await Future.delayed(const Duration(milliseconds: 200));
-    }
-    _firstLink = false;
+  final appLinks = AppLinks();
+
+  void dispatch(Uri uri) {
     Log.info("App Link", uri.toString());
     if (onLink?.call(uri) == true) {
       return;
     }
+    // Login flow sets `onLink` to capture pixiv://?code=...
+    // If the app was cold-started via protocol, `onLink` may not be set yet.
+    // Retry shortly so the login page can still capture the code.
+    if (uri.scheme == "pixiv" && uri.queryParameters.containsKey("code")) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (onLink?.call(uri) == true) return;
+      });
+      return;
+    }
     handleLink(uri);
+  }
+
+  // Cold start (app launched via protocol / #31 Windows/Linux).
+  try {
+    final initial = await appLinks.getInitialLink();
+    if (initial != null) {
+      // Delay until navigator keys are ready (main() calls handleLinks early).
+      Future.delayed(const Duration(milliseconds: 500), () => dispatch(initial));
+    }
+  } catch (e) {
+    Log.error("App Link", "getInitialLink failed: $e");
+  }
+
+  appLinks.uriLinkStream.listen((uri) async {
+    if (_firstLink) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    _firstLink = false;
+    dispatch(uri);
   });
 }
 

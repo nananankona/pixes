@@ -4,6 +4,7 @@ GenericName=Pixes
 Comment=Unofficial pixiv application
 Terminal=false
 Type=Application
+Exec=pixes %u
 Categories=Utility
 Keywords=Flutter;share;images;
 MimeType=x-scheme-handler/pixiv;

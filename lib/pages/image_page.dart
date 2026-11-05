@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:pixes/appdata.dart';
 import 'package:pixes/components/md.dart';
 import 'package:pixes/components/message.dart';
 import 'package:pixes/components/page_route.dart';
@@ -39,6 +40,9 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
   @override
   void initState() {
     windowManager.addListener(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _precacheNext();
+    });
     super.initState();
   }
 
@@ -79,6 +83,18 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
     }
     var file = await CacheManager().findCache(key);
     return file == null ? null : File(file);
+  }
+
+  /// Preload the next page's image when the preload option is enabled.
+  /// Fire-and-forget: warms the disk/memory cache; failures are ignored.
+  void _precacheNext() {
+    final mode = appdata.settings["preloadMode"] as int? ?? 0;
+    if (mode < 1) return;
+    final next = currentPage + 1;
+    if (next >= widget.urls.length) return;
+    final url = widget.urls[next];
+    if (url.endsWith('.zip')) return; // ugoira archive, not viewable
+    precacheImage(getImageProvider(url), context).then((_) {}, onError: (_) {});
   }
 
   String getExtensionName() {
@@ -162,6 +178,12 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
       color: FluentTheme.of(context).micaBackgroundColor,
       child: Listener(
+        onPointerDown: (event) {
+          // #38: right-click to go back on desktop
+          if (event.buttons == 0x02 && Navigator.canPop(context)) {
+            context.pop();
+          }
+        },
         onPointerSignal: (event) {
           if (event is PointerScrollEvent &&
               !HardwareKeyboard.instance.isControlPressed) {
@@ -197,6 +219,7 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
                     setState(() {
                       currentPage = index;
                     });
+                    _precacheNext();
                   },
                 )),
                 Positioned(

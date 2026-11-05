@@ -418,6 +418,30 @@ class _SettingsPageState extends State<SettingsPage> {
                     appdata.writeData();
                   })),
           buildItem(
+              title: "Preload images".tl,
+              action: DropDownButton(
+                  title: Text(switch (
+                      appdata.settings["preloadMode"] as int? ?? 0) {
+                    1 => "Next page".tl,
+                    2 => "Next page and artwork".tl,
+                    _ => "Off".tl,
+                  }),
+                  items: [
+                    for (final entry in [
+                      (0, "Off"),
+                      (1, "Next page"),
+                      (2, "Next page and artwork"),
+                    ])
+                      MenuFlyoutItem(
+                          text: Text(entry.$2.tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["preloadMode"] = entry.$1;
+                            });
+                            appdata.writeData();
+                          }),
+                  ])),
+          buildItem(
               title: "Emphasize artworks from following artists".tl,
               subtitle: "The border of the artworks will be darker".tl,
               action: ToggleSwitch(

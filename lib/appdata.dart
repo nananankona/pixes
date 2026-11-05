@@ -41,6 +41,7 @@ class _Appdata {
       LogicalKeyboardKey.keyG.keyId,
     ],
     "showOriginalImage": false,
+    "preloadMode": 0,
     "checkUpdate": true,
     "emphasizeArtworksFromFollowingArtists": true,
     "initialPage": 4,
@@ -151,6 +152,7 @@ class _Appdata {
       startTime: searchOptions.startTime,
       endTime: searchOptions.endTime,
       ageLimit: searchOptions.ageLimit,
+      includeAiGeneratedWorks: searchOptions.includeAiGeneratedWorks,
     );
     final list = getSearchHistory();
     list.removeWhere((e) => e.keyword == keyword && e.searchType == searchType);

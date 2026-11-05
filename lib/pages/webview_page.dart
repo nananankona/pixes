@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pixes/components/md.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../foundation/app.dart';
 
@@ -60,12 +61,31 @@ class _WebviewPageState extends State<WebviewPage> {
           height: _appBarHeight,
           child: Row(
             children: [
-              const Text("Webview"),
-              const Spacer(),
+              if (App.isMacOS) const SizedBox(width: 64),
+              const SizedBox(width: 6),
+              if (App.isDesktop)
+                const Expanded(
+                  child: DragToMoveArea(
+                    child: Text("Webview"),
+                  ),
+                )
+              else
+                const Expanded(
+                  child: Text("Webview"),
+                ),
               IconButton(
                 icon: const Icon(MdIcons.open_in_new, size: 20,),
                 onPressed: () {
                   launchUrlString(widget.url);
+                  context.pop();
+                },
+              ),
+              IconButton(
+                icon: const Icon(
+                  MdIcons.close,
+                  size: 20,
+                ),
+                onPressed: () {
                   context.pop();
                 },
               ),

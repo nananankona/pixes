@@ -94,7 +94,7 @@ jobs:
 
   Build_IOS:
     if: github.event_name == 'release' || github.event.inputs.build_ios == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
     - uses: actions/checkout@v4
@@ -104,7 +104,15 @@ jobs:
         channel: "stable"
         flutter-version-file: pubspec.yaml
 
-    - run: sudo xcode-select --switch /Applications/Xcode_15.4.app
+    - name: Select latest available Xcode
+      run: |
+        XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+        if [ -z "$XCODE" ]; then
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+        fi
+        echo "Selecting Xcode at: $XCODE"
+        sudo xcode-select --switch "$XCODE"
+        xcodebuild -version
 
     - run: flutter pub get
 
