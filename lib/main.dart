@@ -12,6 +12,7 @@ import "package:pixes/components/keyboard.dart";
 import "package:pixes/components/md.dart";
 import "package:pixes/components/message.dart";
 import "package:pixes/foundation/app.dart";
+import "package:pixes/foundation/cache_manager.dart";
 import "package:pixes/foundation/history.dart";
 import "package:pixes/foundation/log.dart";
 import "package:pixes/network/app_dio.dart";
@@ -29,6 +30,11 @@ AppLifecycleListener? _lifecycleListener;
 
 void main() {
   runZonedGuarded(() async {
+    final stopwatch = Stopwatch()..start();
+    void logStage(String name) {
+      Log.info("Startup", "$name: ${stopwatch.elapsedMilliseconds}ms");
+    }
+
     Future.delayed(const Duration(seconds: 3), checkUpdate);
     WidgetsFlutterBinding.ensureInitialized();
     FlutterError.onError = (details) {
@@ -36,10 +42,24 @@ void main() {
     };
     setSystemProxy();
     await App.init();
+    logStage("App.init");
     await appdata.readData();
+    logStage("appdata.readData");
+    CacheManager().setLimitSize(
+        ((appdata.settings["cacheLimitMB"] as num?)?.toInt() ?? 2048) *
+            1024 *
+            1024);
     await Translation.init();
+    logStage("Translation.init");
     HistoryManager().init();
-    syncService.init();
+    logStage("HistoryManager.init");
+    // Defer sync pull until after first frame so startup isn't janky.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 5), () {
+        syncService.init();
+        logStage("syncService.init");
+      });
+    });
     handleLinks();
     if (App.isDesktop) {
       await WindowManager.instance.ensureInitialized();

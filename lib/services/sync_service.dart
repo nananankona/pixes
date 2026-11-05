@@ -279,7 +279,7 @@ class SyncService {
         merged.add(r.entry);
       }
     }
-    appdata.importSearchHistory(merged);
+    appdata.importSearchHistory(merged, notify: false);
     onProgress?.call("Pulling search history", 1, 1);
   }
 

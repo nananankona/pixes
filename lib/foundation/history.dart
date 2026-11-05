@@ -124,23 +124,35 @@ class HistoryManager {
   }
 
   void importAll(List<IllustHistory> list) {
-    _db.execute('delete from history');
-    for (var h in list) {
-      _db.execute('''
+    _db.execute('BEGIN TRANSACTION');
+    try {
+      _db.execute('delete from history');
+      final stmt = _db.prepare('''
         insert into history (id, imgPath, time, imageCount, isR18, isR18g, isAi, isGif, width, height)
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ''', [
-        h.id,
-        h.imgPath,
-        h.time.millisecondsSinceEpoch,
-        h.imageCount,
-        h.isR18 ? 1 : 0,
-        h.isR18G ? 1 : 0,
-        h.isAi ? 1 : 0,
-        h.isGif ? 1 : 0,
-        h.width,
-        h.height
-      ]);
+      ''');
+      try {
+        for (var h in list) {
+          stmt.execute([
+            h.id,
+            h.imgPath,
+            h.time.millisecondsSinceEpoch,
+            h.imageCount,
+            h.isR18 ? 1 : 0,
+            h.isR18G ? 1 : 0,
+            h.isAi ? 1 : 0,
+            h.isGif ? 1 : 0,
+            h.width,
+            h.height
+          ]);
+        }
+      } finally {
+        stmt.dispose();
+      }
+      _db.execute('COMMIT');
+    } catch (_) {
+      _db.execute('ROLLBACK');
+      rethrow;
     }
   }
 }

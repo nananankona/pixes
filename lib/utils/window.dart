@@ -61,7 +61,14 @@ class WindowPlacement {
 
   static WindowPlacement cache = defaultPlacement;
 
+  static DateTime _lastLoop = DateTime.fromMillisecondsSinceEpoch(0);
+
   static void loop() async {
+    // Throttle: placement barely changes; avoid channel chatter every 100ms.
+    if (DateTime.now().difference(_lastLoop) < const Duration(seconds: 1)) {
+      return;
+    }
+    _lastLoop = DateTime.now();
     var placement = await WindowPlacement.current;
     if (!validate(placement.rect)) {
       return;

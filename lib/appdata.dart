@@ -54,6 +54,22 @@ class _Appdata {
     "lockPassword": "",
     "lockPin": "",
     "searchHistoryLimit": 50,
+    "cacheLimitMB": 2048,
+    "autoDownload": 0,
+    "readingAutoScrollSpeed": 60.0,
+    "illustAutoScrollSpeed": 200.0,
+    "autoAdvanceArtwork": false,
+    "ttsEngine": 0,
+    "ttsSpeed": 1.0,
+    "ttsVolume": 1.0,
+    "voicevoxUrl": "http://127.0.0.1:50021",
+    "voicevoxSpeaker": 1,
+    "capcutServerUrl": "http://127.0.0.1:8080",
+    "capcutV1Type": 0,
+    "capcutV1WsUrl": "wss://sami-sg1.internal.byteintlapi.com/internal/api/v1/ws",
+    "capcutV2Speaker": "labebe",
+    "capcutEmail": "",
+    "capcutPassword": "",
   };
 
   bool lock = false;
@@ -177,10 +193,19 @@ class _Appdata {
     syncService.notifyChange();
   }
 
-  void importSearchHistory(List<SearchHistoryEntry> list) {
-    _cachedHistory = List.from(list);
+  void removeSearchHistory(String keyword, int searchType) {
+    final list = getSearchHistory();
+    list.removeWhere((e) => e.keyword == keyword && e.searchType == searchType);
+    _cachedHistory = list;
     _saveHistoryToFile(list);
     syncService.notifyChange();
+  }
+
+  void importSearchHistory(List<SearchHistoryEntry> list,
+      {bool notify = true}) {
+    _cachedHistory = List.from(list);
+    _saveHistoryToFile(list);
+    if (notify) syncService.notifyChange();
   }
 
   Future<void> _ensureMacOSDownloadPathPermission() async {

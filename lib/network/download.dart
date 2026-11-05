@@ -9,6 +9,7 @@ import 'package:pixes/foundation/app.dart';
 import 'package:pixes/foundation/log.dart';
 import 'package:pixes/network/app_dio.dart';
 import 'package:pixes/network/network.dart';
+import 'package:pixes/utils/block.dart';
 import 'package:pixes/utils/io.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -31,6 +32,41 @@ class DownloadedIllust {
     required this.author,
     required this.imageCount,
   });
+}
+
+/// Auto-download on view. Called when an artwork/novel is actually displayed
+/// (not on pre-built neighbors). Respects private mode and block list.
+void maybeAutoDownloadIllust(Illust illust) {
+  final mode = appdata.settings["autoDownload"] as int? ?? 0;
+  if (mode != 1 && mode != 3) return;
+  if (appdata.settings["privateMode"] == true) return;
+  if (illust.downloaded || illust.downloading || illust.isUgoira) return;
+  if (checkIllusts([illust]).isEmpty) return;
+  final manager = DownloadManager();
+  // Cap the auto queue so mass browsing doesn't flood downloads.
+  if (manager.tasks.length >= manager.maxConcurrentTasks * 3) return;
+  manager.addDownloadingTask(illust);
+}
+
+Future<void> maybeAutoDownloadNovel(Novel novel, String text) async {
+  final mode = appdata.settings["autoDownload"] as int? ?? 0;
+  if (mode != 2 && mode != 3) return;
+  if (appdata.settings["privateMode"] == true) return;
+  try {
+    final downloadPath = appdata.settings["downloadPath"] as String?;
+    if (downloadPath == null || downloadPath.isEmpty) return;
+    final dir = Directory("$downloadPath/novel");
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final safeTitle = novel.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final file = File("${dir.path}/${novel.id}_$safeTitle.txt");
+    if (await file.exists()) return;
+    await file.writeAsString(
+        "${novel.title}\n${novel.author.name} (id:${novel.author.id})\n\n$text");
+  } catch (e) {
+    Log.error("Download", "Auto novel save failed: $e");
+  }
 }
 
 class DownloadingTask {

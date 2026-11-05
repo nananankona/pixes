@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
@@ -141,6 +142,9 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
             onPageChanged: (value) => setState(() {
               page = value;
               _precacheNextArtwork();
+              if (value < illusts.length) {
+                maybeAutoDownloadIllust(illusts[value]);
+              }
             }),
           ),
         ),
@@ -232,11 +236,20 @@ class _IllustPageState extends State<IllustPage> {
 
   KeyEventListenerState? keyboardListener;
 
+  final scrollController = ScrollController();
+
+  Timer? _scrollTimer;
+
+  bool _autoScrolling = false;
+
+  bool _advanced = false;
+
   @override
   void initState() {
     keyboardListener = KeyEventListener.of(context);
     keyboardListener?.removeAll();
     keyboardListener?.addHandler(handleKey);
+    scrollController.addListener(_handleAutoAdvance);
     IllustPage.followCallbacks[id] = (v) {
       setState(() {
         widget.illust.author.isFollowed = v;
@@ -251,9 +264,55 @@ class _IllustPageState extends State<IllustPage> {
 
   @override
   void dispose() {
+    _scrollTimer?.cancel();
+    scrollController.removeListener(_handleAutoAdvance);
+    scrollController.dispose();
     keyboardListener?.removeHandler(handleKey);
     IllustPage.followCallbacks.remove(id);
     super.dispose();
+  }
+
+  void _handleAutoAdvance() {
+    if (_advanced) return;
+    if (appdata.settings["autoAdvanceArtwork"] != true) return;
+    if (!scrollController.hasClients) return;
+    final pos = scrollController.position;
+    if (pos.maxScrollExtent < 200) return;
+    if (pos.pixels >= pos.maxScrollExtent - 100) {
+      _advanced = true;
+      widget.nextPage?.call();
+    }
+  }
+
+  void _toggleAutoScroll() {
+    if (_autoScrolling) {
+      _stopAutoScroll();
+    } else {
+      final speed =
+          (appdata.settings["illustAutoScrollSpeed"] as num).toDouble();
+      setState(() => _autoScrolling = true);
+      _scrollTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+        if (!scrollController.hasClients) return;
+        final pos = scrollController.position;
+        final next = pos.pixels + speed * 0.05;
+        if (next >= pos.maxScrollExtent) {
+          scrollController.jumpTo(pos.maxScrollExtent);
+          _stopAutoScroll();
+          return;
+        }
+        scrollController.jumpTo(next);
+      });
+    }
+  }
+
+  void _stopAutoScroll() {
+    _scrollTimer?.cancel();
+    _scrollTimer = null;
+    if (mounted && _autoScrolling) {
+      setState(() => _autoScrolling = false);
+    } else {
+      _autoScrolling = false;
+    }
   }
 
   @override
@@ -283,6 +342,17 @@ class _IllustPageState extends State<IllustPage> {
                     updateCallback: () => setState(() {}),
                     controller: _bottomBarController,
                   ),
+                if (!isBlocked)
+                  Positioned(
+                    right: 12,
+                    bottom: _kBottomBarHeight + context.padding.bottom + 12,
+                    child: Button(
+                      onPressed: _toggleAutoScroll,
+                      child: Icon(_autoScrolling
+                          ? FluentIcons.pause
+                          : FluentIcons.play),
+                    ),
+                  ),
                 if (isBlocked)
                   const Positioned.fill(
                       child: Center(
@@ -298,8 +368,6 @@ class _IllustPageState extends State<IllustPage> {
       ),
     );
   }
-
-  final scrollController = ScrollController();
 
   void handleKey(LogicalKeyboardKey key) {
     const kShortcutScrollOffset = 200;
@@ -354,13 +422,19 @@ class _IllustPageState extends State<IllustPage> {
   }
 
   Widget buildBody(double width, double height) {
-    return ListView.builder(
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (_) {
+        if (_autoScrolling) _stopAutoScroll();
+        return false;
+      },
+      child: ListView.builder(
         controller: scrollController,
         itemCount: widget.illust.images.length + 2,
         padding: EdgeInsets.zero,
         itemBuilder: (context, index) {
           return buildImage(width, height, index);
-        });
+        }),
+    );
   }
 
   void openImage(int index) {
@@ -1392,6 +1466,11 @@ class _IllustPageWithIdState extends LoadingState<IllustPageWithId, Illust> {
 
   @override
   Future<Res<Illust>> loadData() {
-    return Network().getIllustByID(widget.id);
+    return Network().getIllustByID(widget.id).then((res) {
+      if (!res.error) {
+        maybeAutoDownloadIllust(res.data);
+      }
+      return res;
+    });
   }
 }

@@ -202,25 +202,29 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
             return Stack(
               children: [
                 Positioned.fill(
-                    child: PhotoViewGallery.builder(
-                  pageController: controller,
-                  backgroundDecoration:
-                      const BoxDecoration(color: Colors.transparent),
-                  itemCount: widget.urls.length,
-                  builder: (context, index) {
-                    var image = widget.urls[index];
+                    child: GestureDetector(
+                  onLongPress: showMenu,
+                  onSecondaryTap: showMenu,
+                  child: PhotoViewGallery.builder(
+                    pageController: controller,
+                    backgroundDecoration:
+                        const BoxDecoration(color: Colors.transparent),
+                    itemCount: widget.urls.length,
+                    builder: (context, index) {
+                      var image = widget.urls[index];
 
-                    return PhotoViewGalleryPageOptions(
-                      filterQuality: FilterQuality.medium,
-                      imageProvider: getImageProvider(image),
-                    );
-                  },
-                  onPageChanged: (index) {
-                    setState(() {
-                      currentPage = index;
-                    });
-                    _precacheNext();
-                  },
+                      return PhotoViewGalleryPageOptions(
+                        filterQuality: FilterQuality.medium,
+                        imageProvider: getImageProvider(image),
+                      );
+                    },
+                    onPageChanged: (index) {
+                      setState(() {
+                        currentPage = index;
+                      });
+                      _precacheNext();
+                    },
+                  ),
                 )),
                 Positioned(
                   top: 0,

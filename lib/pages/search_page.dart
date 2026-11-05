@@ -370,6 +370,18 @@ class _SearchHistoryViewState extends State<_SearchHistoryView> {
                             ),
                           ),
                           Icon(FluentIcons.chevron_right, size: 14, color: ColorScheme.of(context).onSurface.toOpacity(0.4)),
+                          IconButton(
+                            icon: const Icon(FluentIcons.delete, size: 14),
+                            onPressed: () {
+                              appdata.removeSearchHistory(
+                                  entry.keyword, entry.searchType);
+                              setState(() {
+                                _displayed.removeAt(index);
+                                _loaded--;
+                                _all = appdata.getSearchHistory();
+                              });
+                            },
+                          ),
                         ],
                       ),
                     ),

@@ -12,6 +12,7 @@ import 'package:pixes/components/message.dart';
 import 'package:pixes/components/page_route.dart';
 import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/app.dart';
+import 'package:pixes/foundation/cache_manager.dart';
 import 'package:pixes/foundation/history.dart';
 import 'package:pixes/pages/main_page.dart';
 import 'package:pixes/pages/sync_page.dart';
@@ -308,9 +309,81 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          buildItem(
+              title: "Auto download on view".tl,
+              action: DropDownButton(
+                  title: Text(switch (
+                      appdata.settings["autoDownload"] as int? ?? 0) {
+                    1 => "Images only".tl,
+                    2 => "Novels only".tl,
+                    3 => "Both".tl,
+                    _ => "Off".tl,
+                  }),
+                  items: [
+                    for (final entry in [
+                      (0, "Off"),
+                      (1, "Images only"),
+                      (2, "Novels only"),
+                      (3, "Both"),
+                    ])
+                      MenuFlyoutItem(
+                          text: Text(entry.$2.tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["autoDownload"] = entry.$1;
+                            });
+                            appdata.writeSettings();
+                          }),
+                  ])),
+          buildItem(
+            title: "Cache limit (MB)".tl,
+            subtitle: _cacheUsageText(),
+            action: SizedBox(
+              width: 96,
+              height: 32,
+              child: NumberBox<int>(
+                value: appdata.settings["cacheLimitMB"],
+                autofocus: false,
+                min: 128,
+                max: 32768,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    appdata.settings["cacheLimitMB"] = value;
+                  });
+                  CacheManager()
+                      .setLimitSize(value * 1024 * 1024);
+                  appdata.writeSettings();
+                },
+                clearButton: false,
+                mode: SpinButtonPlacementMode.none,
+              ),
+            ),
+          ),
+          buildItem(
+              title: "Clear image cache".tl,
+              action: Button(
+                child: Text("Clear".tl).fixWidth(64),
+                onPressed: () async {
+                  await CacheManager().clear();
+                  if (mounted) {
+                    context.showToast(message: "Done".tl);
+                    setState(() {});
+                  }
+                },
+              )),
         ],
       ),
     );
+  }
+
+  String _cacheUsageText() {
+    final size = CacheManager().currentSize;
+    if (size <= 0) return "Calculating...".tl;
+    if (size >= 1024 * 1024 * 1024) {
+      return "${(size / 1024 / 1024 / 1024).toStringAsFixed(2)} GB";
+    }
+    return "${(size / 1024 / 1024).toStringAsFixed(1)} MB";
   }
 
   Widget buildAbout() {
@@ -451,6 +524,57 @@ class _SettingsPageState extends State<SettingsPage> {
                     setState(() {
                       appdata.settings[
                           'emphasizeArtworksFromFollowingArtists'] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          buildItem(
+              title: "Novel auto-scroll speed".tl,
+              subtitle:
+                  "${(appdata.settings["readingAutoScrollSpeed"] as num).toDouble().toStringAsFixed(0)} px/s",
+              action: SizedBox(
+                width: 160,
+                child: Slider(
+                  value: (appdata.settings["readingAutoScrollSpeed"] as num)
+                      .toDouble(),
+                  min: 20,
+                  max: 200,
+                  divisions: 18,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["readingAutoScrollSpeed"] = value;
+                    });
+                    appdata.writeSettings();
+                  },
+                ),
+              )),
+          buildItem(
+              title: "Illust auto-scroll speed".tl,
+              subtitle:
+                  "${(appdata.settings["illustAutoScrollSpeed"] as num).toDouble().toStringAsFixed(0)} px/s",
+              action: SizedBox(
+                width: 160,
+                child: Slider(
+                  value: (appdata.settings["illustAutoScrollSpeed"] as num)
+                      .toDouble(),
+                  min: 100,
+                  max: 600,
+                  divisions: 10,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["illustAutoScrollSpeed"] = value;
+                    });
+                    appdata.writeSettings();
+                  },
+                ),
+              )),
+          buildItem(
+              title: "Auto advance to next artwork".tl,
+              subtitle: "When scrolled to the end".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings['autoAdvanceArtwork'] == true,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings['autoAdvanceArtwork'] = value;
                     });
                     appdata.writeData();
                   })),

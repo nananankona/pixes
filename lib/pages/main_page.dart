@@ -84,15 +84,16 @@ class _MainPageState extends State<MainPage>
     listenMouseSideButtonToBack(navigatorKey);
     App.mainNavigatorKey = navigatorKey;
     index = appdata.settings["initialPage"] ?? 4;
-    // Attempt automatic token refresh if account data exists
-    if (appdata.account != null) {
+    // Defer token refresh so first frame isn't blocked by network.
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!mounted || appdata.account == null) return;
       Network().refreshToken().then((res) {
         if (res.success) {
           // Force UI rebuild to reflect logged‑in state
           if (mounted) setState(() {});
         }
       });
-    }
+    });
     super.initState();
   }
 
