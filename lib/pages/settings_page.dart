@@ -856,11 +856,24 @@ class _SettingsPageState extends State<SettingsPage> {
               action: Button(
                 child: Text("Import".tl).fixWidth(64),
                 onPressed: () async {
-                  final XFile? file = await openFile(
-                    acceptedTypeGroups: [
-                      XTypeGroup(label: 'JSON', extensions: ['json'])
-                    ],
-                  );
+                  XFile? file;
+                  try {
+                    file = await openFile(
+                      acceptedTypeGroups: [
+                        XTypeGroup(
+                          label: 'JSON',
+                          extensions: ['json'],
+                          // Required on iOS (extensions are ignored there).
+                          uniformTypeIdentifiers: const ['public.json'],
+                        )
+                      ],
+                    );
+                  } catch (_) {
+                    if (mounted) {
+                      context.showToast(message: 'Failed to open file'.tl);
+                    }
+                    return;
+                  }
                   if (file != null) {
                     final String content = await file.readAsString();
                     final Map<String, dynamic> map = jsonDecode(content);
@@ -1595,14 +1608,25 @@ class _FontSelectionPageState extends State<_FontSelectionPage> {
     const XTypeGroup typeGroup = XTypeGroup(
       label: 'Font files',
       extensions: ['ttf', 'otf', 'ttc'],
+      // Required on iOS (extensions are ignored there).
+      uniformTypeIdentifiers: ['public.font'],
     );
 
-    final XFile? file = await openFile(acceptedTypeGroups: [typeGroup]);
+    XFile? file;
+    try {
+      file = await openFile(acceptedTypeGroups: [typeGroup]);
+    } catch (_) {
+      if (mounted) {
+        context.showToast(message: 'Failed to open file'.tl);
+      }
+      return;
+    }
 
-    if (file != null) {
+    final selected = file;
+    if (selected != null) {
       setState(() {
-        selectedFont = file.path;
-        appdata.settings["customFont"] = file.path;
+        selectedFont = selected.path;
+        appdata.settings["customFont"] = selected.path;
       });
       appdata.writeData();
       StateController.findOrNull(tag: "MyApp")?.update();

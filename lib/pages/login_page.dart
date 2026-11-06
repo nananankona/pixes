@@ -64,11 +64,24 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 16),
                     FluentButton(
                       onPressed: () async {
-                        final XFile? file = await openFile(
-                          acceptedTypeGroups: [
-                            XTypeGroup(label: 'Config', extensions: ['json'])
-                          ],
-                        );
+                        XFile? file;
+                        try {
+                          file = await openFile(
+                            acceptedTypeGroups: [
+                              XTypeGroup(
+                                label: 'Config',
+                                extensions: ['json'],
+                                // Required on iOS (extensions are ignored there).
+                                uniformTypeIdentifiers: const ['public.json'],
+                              )
+                            ],
+                          );
+                        } catch (e) {
+                          if (mounted) {
+                            context.showToast(message: 'Failed to open file'.tl);
+                          }
+                          return;
+                        }
                         if (file != null) {
                           final String content = await file.readAsString();
                           try {

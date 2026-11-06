@@ -255,7 +255,8 @@
         "Test Voice": "试听",
         "Select a TTS engine first": "请先选择朗读引擎",
         "Speaker": "说话者",
-        "WebSocket URL": "WebSocket 地址"
+        "WebSocket URL": "WebSocket 地址",
+        "Failed to open file": "打开文件失败"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -513,7 +514,8 @@
         "Test Voice": "試聽",
         "Select a TTS engine first": "請先選擇朗讀引擎",
         "Speaker": "說話者",
-        "WebSocket URL": "WebSocket 位址"
+        "WebSocket URL": "WebSocket 位址",
+        "Failed to open file": "開啟檔案失敗"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -771,7 +773,8 @@
         "Test Voice": "미리듣기",
         "Select a TTS engine first": "먼저 TTS 엔진을 선택하세요",
         "Speaker": "화자",
-        "WebSocket URL": "WebSocket 주소"
+        "WebSocket URL": "WebSocket 주소",
+        "Failed to open file": "파일 열기 실패"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1080,6 +1083,7 @@
         "Test Voice": "試聴",
         "Select a TTS engine first": "先に読み上げエンジンを選択してください",
         "Speaker": "話者",
-        "WebSocket URL": "WebSocketのURL"
+        "WebSocket URL": "WebSocketのURL",
+        "Failed to open file": "ファイルを開けませんでした"
     }
 }
