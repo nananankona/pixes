@@ -31,6 +31,12 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
+# audioplayers_windows still uses <experimental/coroutine>; MSVC 14.4x+/VS 18
+# turns the deprecation notice into a hard error without these macros.
+add_definitions(
+  -D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING
+  -D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+)
 
 # Compilation settings that should be applied to most targets.
 #
