@@ -235,7 +235,7 @@ jobs:
         CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_KEYSTORE_PASSWORD }}
         # audioplayers_windows still uses <experimental/coroutine>; VS 17.14+/18
         # turns the deprecation notice into a hard error without this macro.
-        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING
+        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGSS
       run: |
         flutter pub get
         dart run msix:create -p ${{ env.CERTIFICATE_PASSWORD }} --install-certificate false
@@ -244,7 +244,7 @@ jobs:
       if: github.event.inputs.dev_build == 'true'
       shell: bash
       env:
-        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING
+        CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNING /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGSS
       run: |
         sed -i '/certificate_path:/d' pubspec.yaml
         flutter pub get
