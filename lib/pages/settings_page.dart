@@ -17,6 +17,7 @@ import 'package:pixes/foundation/history.dart';
 import 'package:pixes/pages/main_page.dart';
 import 'package:pixes/pages/sync_page.dart';
 import 'package:pixes/utils/io.dart';
+import 'package:pixes/utils/update.dart';
 import 'package:pixes/utils/translation.dart';
 import 'package:pixes/utils/theme_background.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -1009,6 +1010,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     });
                     appdata.writeData();
                   })),
+          buildItem(
+              title: "Check for updates".tl,
+              action: Button(
+                child: Text("Check now".tl).fixWidth(64),
+                onPressed: () => checkUpdate(manual: true),
+              )),
           buildItem(
               title: "Github",
               subtitle: "nananankona/pixes",

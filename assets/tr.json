@@ -321,7 +321,10 @@
         "Auto-bookmark on save": "保存时自动收藏",
         "Bookmark when download completes": "下载完成后收藏",
         "Series": "系列",
-        "Line break length": "换行字数"
+        "Line break length": "换行字数",
+        "Downloading update": "正在下载更新",
+        "Download failed": "下载失败",
+        "Check now": "立即检查"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -645,7 +648,10 @@
         "Auto-bookmark on save": "儲存時自動收藏",
         "Bookmark when download completes": "下載完成後收藏",
         "Series": "系列",
-        "Line break length": "換行字數"
+        "Line break length": "換行字數",
+        "Downloading update": "正在下載更新",
+        "Download failed": "下載失敗",
+        "Check now": "立即檢查"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1319,7 +1325,10 @@
         "Auto-bookmark on save": "保存時に自動收藏",
         "Bookmark when download completes": "ダウンロード完了時に收藏",
         "Series": "シリーズ",
-        "Line break length": "改行文字数"
+        "Line break length": "改行文字数",
+        "Downloading update": "更新をダウンロード中",
+        "Download failed": "ダウンロード失敗",
+        "Check now": "今すぐ確認"
     },
     "es_ES": {
         "Search": "Buscar",
