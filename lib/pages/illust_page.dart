@@ -78,6 +78,11 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _precacheNextArtwork();
     });
+    // The initially displayed page never triggers onPageChanged,
+    // so trigger auto-download for it here.
+    if (widget.initialPage >= 0 && widget.initialPage < illusts.length) {
+      maybeAutoDownloadIllust(illusts[widget.initialPage]);
+    }
     super.initState();
   }
 
