@@ -152,6 +152,7 @@ class SyncService {
   }
 
   void _startRealtime() {
+    if (appdata.settings["syncRealtime"] == false) return;
     final url = _url;
     final key = _key;
     if (url == null || key == null) return;

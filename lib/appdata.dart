@@ -91,6 +91,7 @@ class _Appdata {
     "imageMirror": "",
     "favoriteAutoSave": false,
     "saveAutoFavorite": false,
+    "syncRealtime": true,
     "novelPositions": <String, int>{},
     "yumePairs": <String, String>{},
     "novelBreakLength": 0,

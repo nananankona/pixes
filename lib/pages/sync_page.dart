@@ -3,6 +3,7 @@ import 'package:pixes/appdata.dart';
 import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/navigation.dart';
 
+import 'package:pixes/services/realtime_sync.dart';
 import 'package:pixes/services/sync_service.dart';
 import 'package:pixes/utils/translation.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -233,6 +234,33 @@ class _SyncPageState extends State<SyncPage> {
                   ]),
                 ),
                 ToggleSwitch(checked: _syncSettings, onChanged: (v) => setState(() => _syncSettings = v)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text("Live sync".tl, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Receive updates instantly".tl, style: const TextStyle(fontSize: 12)),
+                  ]),
+                ),
+                ToggleSwitch(
+                    checked: appdata.settings["syncRealtime"] != false,
+                    onChanged: (v) {
+                      setState(() {
+                        appdata.settings["syncRealtime"] = v;
+                      });
+                      appdata.writeData();
+                      if (v) {
+                        syncService.init();
+                      } else {
+                        realtimeSync.stop();
+                      }
+                    }),
               ]),
             ),
           ),

@@ -325,7 +325,10 @@
         "Downloading update": "正在下载更新",
         "Download failed": "下载失败",
         "Check now": "立即检查",
-        "Mirror": "镜像"
+        "Mirror": "镜像",
+        "Show original": "显示原图",
+        "Show preview": "显示预览",
+        "Receive updates instantly": "即时接收更新"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -653,7 +656,10 @@
         "Downloading update": "正在下載更新",
         "Download failed": "下載失敗",
         "Check now": "立即檢查",
-        "Mirror": "鏡像"
+        "Mirror": "鏡像",
+        "Show original": "顯示原圖",
+        "Show preview": "顯示預覽",
+        "Receive updates instantly": "即時接收更新"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1332,7 +1338,10 @@
         "Download failed": "ダウンロード失敗",
         "Check now": "今すぐ確認",
         "Mirror": "ミラー",
-        "Telegram": "Twitter"
+        "Telegram": "Twitter",
+        "Show original": "原寸を表示",
+        "Show preview": "プレビューを表示",
+        "Receive updates instantly": "更新をリアルタイムで受信"
     },
     "es_ES": {
         "Search": "Buscar",

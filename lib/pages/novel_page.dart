@@ -395,7 +395,12 @@ class _NovelPageState extends State<NovelPage> {
                               const Icon(MdIcons.favorite_outline, size: 18),
                             if (constrains.maxWidth > 420)
                               const SizedBox(width: 12),
-                            if (constrains.maxWidth > 420) Text("Favorite".tl)
+                            if (constrains.maxWidth > 420)
+                              Flexible(
+                                child: Text("Favorite".tl,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                              )
                           ],
                         )
                             .fixWidth(shouldFillSpace
@@ -414,7 +419,12 @@ class _NovelPageState extends State<NovelPage> {
                             const Icon(MdIcons.comment, size: 18),
                             if (constrains.maxWidth > 420)
                               const SizedBox(width: 12),
-                            if (constrains.maxWidth > 420) Text("Comments".tl)
+                            if (constrains.maxWidth > 420)
+                              Flexible(
+                                child: Text("Comments".tl,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                              )
                           ],
                         )
                             .fixWidth(shouldFillSpace

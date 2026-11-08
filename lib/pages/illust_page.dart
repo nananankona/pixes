@@ -1165,16 +1165,26 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
               Builder(builder: (context) {
                 final useOriginal = widget.forceOriginal ??
                     appdata.settings["showOriginalImage"] == true;
-                return Tooltip(
-                  message: (useOriginal ? "Show preview".tl : "Show original".tl),
-                  child: IconButton(
-                    icon: Icon(
-                      useOriginal
-                          ? MdIcons.high_quality
-                          : MdIcons.image_outlined,
-                      size: 18,
+                final wide = MediaQuery.of(context).size.width > 640;
+                return Button(
+                  onPressed: widget.onToggleOriginal,
+                  child: SizedBox(
+                    height: 28,
+                    child: Row(
+                      children: [
+                        Icon(
+                          useOriginal
+                              ? MdIcons.high_quality
+                              : MdIcons.image_outlined,
+                          size: 18,
+                        ),
+                        if (wide) const SizedBox(width: 8),
+                        if (wide)
+                          Text(useOriginal
+                              ? "Show preview".tl
+                              : "Show original".tl),
+                      ],
                     ),
-                    onPressed: widget.onToggleOriginal,
                   ),
                 );
               }),

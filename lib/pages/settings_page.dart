@@ -911,7 +911,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          // Hero header (theme-aware, same Card language as elsewhere)
+          // Hero header (same Card language as the rest)
           Card(
             margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             padding: EdgeInsets.zero,
@@ -920,18 +920,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
               child: Row(
                 children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: accent.withValues(alpha: 0.12),
-                      border: Border.all(
-                          color: accent.withValues(alpha: 0.4), width: 1.5),
-                    ),
-                    child: Icon(FluentIcons.picture,
-                        size: 32, color: accent),
-                  ),
+                  const Icon(FluentIcons.picture, size: 40),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -944,20 +933,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: accent.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color:
-                                        accent.withValues(alpha: 0.4)),
-                              ),
-                              child: Text("v${App.version}",
-                                  style: TextStyle(
-                                      fontSize: 12, color: accent)),
-                            ),
+                            Text("v${App.version}",
+                                style: const TextStyle(fontSize: 12)),
                           ],
                         ),
                         const SizedBox(height: 4),
