@@ -157,7 +157,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
           ],
         ),
-        content: CustomScrollView(
+        paneBodyBuilder: (item, child) => CustomScrollView(
           key: ValueKey(section),
           slivers: _sectionSlivers(),
         ),
