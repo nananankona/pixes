@@ -169,6 +169,50 @@ class MyApp extends StatelessWidget {
                             ?.toDouble() ??
                         0.82)
                         .clamp(0.2, 1.0);
+                Color? iconColorSetting;
+                try {
+                  final customIcon =
+                      appdata.settings["themeIconColor"] as String?;
+                  if (customIcon != null && customIcon.isNotEmpty) {
+                    iconColorSetting = _hexToColor(customIcon);
+                  }
+                } catch (_) {
+                  iconColorSetting = null;
+                }
+                final iconColor =
+                    iconColorSetting ?? customTextColor ?? colorScheme.onSurface;
+                // Full-coverage text styling: fluent widgets use typography
+                // colors (not DefaultTextStyle), so override it directly.
+                Typography? customTypography;
+                if (customTextColor != null || textShadow) {
+                  final base = Typography.fromBrightness(
+                    brightness: brightness,
+                    color: customTextColor,
+                  );
+                  if (textShadow) {
+                    final sh = [
+                      Shadow(
+                        color: shadowColor,
+                        offset: const Offset(0, 1),
+                        blurRadius: 4,
+                      ),
+                    ];
+                    TextStyle? withShadow(TextStyle? st) =>
+                        st?.merge(TextStyle(shadows: sh));
+                    customTypography = Typography.raw(
+                      display: withShadow(base.display),
+                      titleLarge: withShadow(base.titleLarge),
+                      title: withShadow(base.title),
+                      subtitle: withShadow(base.subtitle),
+                      bodyLarge: withShadow(base.bodyLarge),
+                      bodyStrong: withShadow(base.bodyStrong),
+                      body: withShadow(base.body),
+                      caption: withShadow(base.caption),
+                    );
+                  } else {
+                    customTypography = base;
+                  }
+                }
                 // Translucent surfaces so the wallpaper shows through
                 // cards, menus, flyouts and dialogs instead of solid white.
                 final cardTranslucent = hasBg
@@ -192,6 +236,29 @@ theme: FluentThemeData(
                           ),
                           cardColor: cardTranslucent,
                           menuColor: menuTranslucent,
+                          typography: customTypography,
+                          buttonTheme: hasBg
+                              ? ButtonThemeData(
+                                  defaultButtonStyle: ButtonStyle(
+                                    backgroundColor:
+                                        WidgetStateProperty.resolveWith(
+                                            (states) {
+                                      // Resting state follows card opacity;
+                                      // hover/pressed/disabled fall through
+                                      // to the fluent defaults.
+                                      if (states.isEmpty) {
+                                        final base = brightness ==
+                                                Brightness.light
+                                            ? const Color(0xb3ffffff)
+                                            : const Color(0x0fffffff);
+                                        return Color.lerp(Colors.transparent,
+                                            base, cardOpacity);
+                                      }
+                                      return null;
+                                    }),
+                                  ),
+                                )
+                              : null,
                           fontFamily: _getCustomFont() ?? (App.isWindows ? "Microsoft YaHei UI" : null),
                           // apply primary color from settings if provided
                           accentColor: AccentColor.swatch({
@@ -205,7 +272,7 @@ theme: FluentThemeData(
                           }),
 // Icon color from settings
 iconTheme: IconThemeData(
-  color: colorScheme.onSurface,
+  color: iconColor,
 ),
                           focusTheme: const FocusThemeData(
                             primaryBorder: BorderSide.none,
@@ -270,22 +337,21 @@ style: TextStyle(
                         
 
 
-                       if (textShadow) {
-                          widget = IconTheme(
-                            data: IconTheme.of(context).merge(
-                              IconThemeData(
-                                shadows: [
-                                  Shadow(
-                                    color: shadowColor,
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 4,
-                                  ),
-                                ],
-                              ),
+                       widget = IconTheme(
+                            data: IconThemeData(
+                              color: iconColor,
+                              shadows: textShadow
+                                  ? [
+                                      Shadow(
+                                        color: shadowColor,
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 4,
+                                      ),
+                                    ]
+                                  : null,
                             ),
                             child: widget,
                           );
-                        }
                        if (bgFile != null || bgTint != null) {
                           final bgOpacity = ((appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 0.5).clamp(0.05, 1.0);
                           Widget bgLayer = bgTint != null

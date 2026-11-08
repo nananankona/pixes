@@ -58,6 +58,7 @@ class _Appdata {
     "themeShadowColor": "",
     "themeCardOpacity": 0.82,
     "themeTextColor": "",
+    "themeIconColor": "",
     "privateMode": false,
     "lockEnabled": false,
     "lockPassword": "",

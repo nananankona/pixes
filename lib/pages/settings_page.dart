@@ -221,8 +221,8 @@ class _SettingsPageState extends State<SettingsPage> {
     [1, "Loop slideshow"],
     [1, "Emphasize artworks from following artists"],
     [1, "Novel auto-scroll speed"], [1, "Illust auto-scroll speed"],
-    [3, "Text shadow"], [3, "Text color"], [3, "Shadow color"],
-    [3, "Card opacity"],
+    [3, "Text shadow"], [3, "Text color"], [3, "Icon color"],
+    [3, "Shadow color"], [3, "Card opacity"],
     [1, "Auto advance to next artwork"],
     [2, "Download Path"], [2, "Subpath"], [2, "Max parallels"],
     [2, "Folder organization"], [2, "Auto download on view"],
@@ -791,10 +791,99 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget buildAbout() {
+    final accent = FluentTheme.of(context).accentColor;
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          buildItem(title: "Version", subtitle: App.version),
+          // Hero header
+          Card(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            padding: EdgeInsets.zero,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [accent.light, accent.dark],
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.2),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6), width: 2),
+                    ),
+                    child: const Icon(FluentIcons.picture, size: 36, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text("pixes",
+                      style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text("v${App.version}",
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text("Unofficial Pixiv client".tl,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.9))),
+                ],
+              ),
+            ),
+          ),
+          // Feature highlights
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final f in [
+                  (FluentIcons.picture, "Custom theme".tl),
+                  (FluentIcons.sync, "Sync".tl),
+                  (FluentIcons.speakers, "TTS".tl),
+                  (FluentIcons.download, "Download".tl),
+                  (FluentIcons.history, "History".tl),
+                  (FluentIcons.search, "Search".tl),
+                ])
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: accent.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(f.$1, size: 14, color: accent),
+                        const SizedBox(width: 6),
+                        Text(f.$2, style: const TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
           buildItem(
               title: "Check for updates on startup".tl,
               action: ToggleSwitch(
@@ -807,6 +896,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   })),
           buildItem(
               title: "Github",
+              subtitle: "nananankona/pixes",
               action: IconButton(
                 icon: const Icon(
                   MdIcons.open_in_new,
@@ -817,6 +907,7 @@ class _SettingsPageState extends State<SettingsPage> {
               )),
           buildItem(
               title: "Telegram",
+              subtitle: "t.me/venera_dev",
               action: IconButton(
                 icon: const Icon(
                   MdIcons.open_in_new,
@@ -826,6 +917,7 @@ class _SettingsPageState extends State<SettingsPage> {
               )),
           buildItem(
               title: "Logs",
+              subtitle: "Diagnostics & history".tl,
               action: IconButton(
                   icon: const Icon(
                     MdIcons.open_in_new,
@@ -1344,6 +1436,53 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () {
                           setState(() {
                             appdata.settings["themeTextColor"] = "";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        },
+                        child: Text("Default".tl).fixWidth(64),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Icon color".tl, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _themeColorDot(context, "themeIconColor", null),
+                      for (final hex in [
+                        '#000000', '#FFFFFF', '#E81123', '#FF8C00',
+                        '#0078D4', '#10893E', '#8764B8',
+                      ])
+                        _themeColorDot(context, "themeIconColor", hex),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Button(
+                        onPressed: () => _pickHexColor(
+                            "Icon color".tl, "themeIconColor"),
+                        child: Text("Custom".tl).fixWidth(64),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["themeIconColor"] = "";
                           });
                           appdata.writeData();
                           StateController.findOrNull(tag: "MyApp")?.update();

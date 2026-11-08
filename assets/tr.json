@@ -293,7 +293,11 @@
         "Search with Google": "用Google搜索",
         "Text color": "文字颜色",
         "Shadow color": "阴影颜色",
-        "Card opacity": "卡片不透明度"
+        "Card opacity": "卡片不透明度",
+        "Icon color": "图标颜色",
+        "Unofficial Pixiv client": "非官方Pixiv客户端",
+        "Custom theme": "自定义主题",
+        "Diagnostics & history": "诊断与历史"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -589,7 +593,11 @@
         "Search with Google": "用Google搜尋",
         "Text color": "文字顏色",
         "Shadow color": "陰影顏色",
-        "Card opacity": "卡片不透明度"
+        "Card opacity": "卡片不透明度",
+        "Icon color": "圖示顏色",
+        "Unofficial Pixiv client": "非官方Pixiv客戶端",
+        "Custom theme": "自訂主題",
+        "Diagnostics & history": "診斷與歷史"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -885,7 +893,11 @@
         "Search with Google": "Google에서 검색",
         "Text color": "텍스트 색",
         "Shadow color": "그림자 색",
-        "Card opacity": "카드 불투명도"
+        "Card opacity": "카드 불투명도",
+        "Icon color": "아이콘 색",
+        "Unofficial Pixiv client": "비공식 Pixiv 클라이언트",
+        "Custom theme": "사용자 지정 테마",
+        "Diagnostics & history": "진단 및 기록"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1230,6 +1242,10 @@
         "Search with Google": "Googleで検索",
         "Text color": "文字色",
         "Shadow color": "影色",
-        "Card opacity": "カード不透明度"
+        "Card opacity": "カード不透明度",
+        "Icon color": "アイコン色",
+        "Unofficial Pixiv client": "非公式Pixivクライアント",
+        "Custom theme": "カスタムテーマ",
+        "Diagnostics & history": "診断と履歴"
     }
 }
