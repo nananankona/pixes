@@ -1386,36 +1386,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       return;
                     }
                     if (file != null) {
-                      try {
-                        final ext = file!.name.contains('.')
-                            ? file!.name.split('.').last.toLowerCase()
-                            : 'png';
-                        final dest =
-                            File('${App.dataPath}/theme_background.$ext');
-                        await dest.writeAsBytes(await file!.readAsBytes());
-                        // Remove a stale copy with a different extension.
-                        for (final e in ['png', 'jpg', 'jpeg', 'webp']) {
-                          if (e == ext) continue;
-                          final stale =
-                              File('${App.dataPath}/theme_background.$e');
-                          if (await stale.exists()) {
-                            try {
-                              await stale.delete();
-                            } catch (_) {}
-                          }
-                        }
-                        if (!mounted) return;
-                        setState(() {
-                          appdata.settings["themeBackground"] = dest.path;
-                        });
-                      } catch (_) {
-                        if (!mounted) return;
-                        setState(() {
-                          appdata.settings["themeBackground"] = file!.path;
-                        });
+                      final installed =
+                          await installThemeBackgroundFile(file!.path);
+                      if (!mounted) return;
+                      setState(() {});
+                      if (installed == null && mounted) {
+                        context.showToast(
+                            message: 'Failed to open file'.tl);
                       }
-                      appdata.writeData();
-                      StateController.findOrNull(tag: "MyApp")?.update();
                     }
                   },
                 ),

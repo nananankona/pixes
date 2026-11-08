@@ -1300,30 +1300,31 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
 
   void favorite([String type = "public"]) async {
     if (isBookmarking) return;
-    setState(() {
-      isBookmarking = true;
-    });
-    var method = widget.illust.isBookmarked ? "delete" : "add";
+    isBookmarking = true;
+    final method = widget.illust.isBookmarked ? "delete" : "add";
+    final added = method == "add";
+    // Optimistic UI: reflect immediately, revert on failure.
+    widget.illust.isBookmarked = added;
+    IllustWidget.favoriteCallbacks[widget.illust.id.toString()]?.call(added);
+    setState(() {});
     var res =
         await Network().addBookmark(widget.illust.id.toString(), method, type);
     if (res.error) {
+      widget.illust.isBookmarked = !added;
+      IllustWidget.favoriteCallbacks[widget.illust.id.toString()]?.call(!added);
       if (mounted) {
         context.showToast(message: "Network Error");
       }
-    } else {
-      final added = method == "add";
-      widget.illust.isBookmarked = !widget.illust.isBookmarked;
-      IllustWidget.favoriteCallbacks[widget.illust.id.toString()]
-          ?.call(widget.illust.isBookmarked);
-      if (added &&
-          appdata.settings["favoriteAutoSave"] == true &&
-          !widget.illust.downloaded) {
-        DownloadManager().addDownloadingTask(widget.illust);
-      }
+    } else if (added &&
+        appdata.settings["favoriteAutoSave"] == true &&
+        !widget.illust.downloaded) {
+      DownloadManager().addDownloadingTask(widget.illust);
     }
-    setState(() {
-      isBookmarking = false;
-    });
+    if (mounted) {
+      setState(() {
+        isBookmarking = false;
+      });
+    }
   }
 
   Iterable<Widget> buildActions(double width) sync* {

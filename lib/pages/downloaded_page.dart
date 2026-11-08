@@ -36,6 +36,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
   bool showNovels = false;
   String query = "";
   int _illustLimit = 50;
+  int _novelLimit = 50;
 
   void loadData() {
     illusts = DownloadManager().listAll();
@@ -135,11 +136,26 @@ class _DownloadedPageState extends State<DownloadedPage> {
     if (items.isEmpty) {
       return Center(child: Text("No results".tl));
     }
+    final total = items.length;
+    final view =
+        total > _novelLimit ? items.sublist(0, _novelLimit) : items;
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      itemCount: items.length,
+      itemCount: view.length + (view.length < total ? 1 : 0),
       itemBuilder: (context, index) {
-        final novel = items[index];
+        if (index >= view.length) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Button(
+                child: Text("Load more".tl),
+                onPressed: () =>
+                    setState(() => _novelLimit += 50),
+              ),
+            ),
+          );
+        }
+        final novel = view[index];
         final kb = (novel.fileSize / 1024).toStringAsFixed(1);
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),

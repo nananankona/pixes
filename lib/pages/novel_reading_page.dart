@@ -449,6 +449,8 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
                     fontWeight: FontWeight.bold,
                     height: fontHeight))
             .paddingBottom(8);
+      } else if (content.startsWith('[newpage')) {
+        continue;
       } else {
         yield Text(applyYumePairs(content),
                 style:

@@ -34,6 +34,11 @@ class CacheManager {
         expires INTEGER NOT NULL
       )
     ''');
+    try {
+      _db.execute('ALTER TABLE cache ADD COLUMN time INTEGER');
+    } catch (_) {}
+    _db.execute('UPDATE cache SET time = ? WHERE time IS NULL',
+        [DateTime.now().millisecondsSinceEpoch]);
     compute((path) => Directory(path).size, cachePath)
         .then((value) => _currentSize = value);
   }
@@ -57,10 +62,10 @@ class CacheManager {
     }
     await file.create(recursive: true);
     await file.writeAsBytes(data);
-    var expires = DateTime.now().millisecondsSinceEpoch + duration;
+    final now = DateTime.now().millisecondsSinceEpoch;
     _db.execute('''
-      INSERT OR REPLACE INTO cache (key, dir, name, expires) VALUES (?, ?, ?, ?)
-    ''', [key, dir.toString(), name, expires]);
+      INSERT OR REPLACE INTO cache (key, dir, name, expires, time) VALUES (?, ?, ?, ?, ?)
+    ''', [key, dir.toString(), name, now + duration, now]);
     if(_currentSize != null) {
       _currentSize = _currentSize! + data.length;
     }
@@ -108,16 +113,22 @@ class CacheManager {
       return;
     }
     _isChecking = true;
+    try {
     var res = _db.select('''
       SELECT * FROM cache
       WHERE expires < ?
     ''', [DateTime.now().millisecondsSinceEpoch]);
     for(var row in res){
-      var dir = row.values[1] as int;
+      var dir = row.values[1].toString();
       var name = row.values[2] as String;
       var file = File('$cachePath/$dir/$name');
+      var fileSize = 0;
       if(await file.exists()){
+        fileSize = await file.length();
         await file.delete();
+      }
+      if(_currentSize != null) {
+        _currentSize = _currentSize! - fileSize;
       }
     }
     _db.execute('''
@@ -131,9 +142,10 @@ class CacheManager {
         ORDER BY time ASC
         limit 10
       ''');
+      if(res.isEmpty) break;
       for(var row in res){
         var key = row.values[0] as String;
-        var dir = row.values[1] as int;
+        var dir = row.values[1].toString();
         var name = row.values[2] as String;
         var file = File('$cachePath/$dir/$name');
         if(await file.exists()){
@@ -155,7 +167,9 @@ class CacheManager {
         }
       }
     }
-    _isChecking = false;
+    } finally {
+      _isChecking = false;
+    }
   }
 
   Future<void> delete(String key) async{
@@ -232,7 +246,10 @@ class CachingFile{
 
   final List<int> _buffer = [];
 
+  int _writtenBytes = 0;
+
   Future<void> writeBytes(List<int> data) async{
+    _writtenBytes += data.length;
     _buffer.addAll(data);
     if(_buffer.length > 1024 * 1024){
       await file.writeAsBytes(_buffer, mode: FileMode.append);
@@ -244,9 +261,18 @@ class CachingFile{
     if(_buffer.isNotEmpty){
       await file.writeAsBytes(_buffer, mode: FileMode.append);
     }
+    final now = DateTime.now().millisecondsSinceEpoch;
     CacheManager()._db.execute('''
-      INSERT OR REPLACE INTO cache (key, dir, name, expires) VALUES (?, ?, ?, ?)
-    ''', [key, dir, name, DateTime.now().millisecondsSinceEpoch + 7 * 24 * 60 * 60 * 1000]);
+      INSERT OR REPLACE INTO cache (key, dir, name, expires, time) VALUES (?, ?, ?, ?, ?)
+    ''', [key, dir, name, now + 7 * 24 * 60 * 60 * 1000, now]);
+    final manager = CacheManager();
+    if(manager._currentSize != null) {
+      manager._currentSize = manager._currentSize! + _writtenBytes;
+    }
+    if(manager._currentSize != null &&
+        manager._currentSize! > manager._limitSize){
+      await manager.checkCache();
+    }
   }
 
   Future<void> cancel() async{
