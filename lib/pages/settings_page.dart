@@ -303,7 +303,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => section = i),
+                  onTap: () {
+                    // Sync section opens its page directly.
+                    if (i == 5) {
+                      context.to(() => const SyncPage());
+                      return;
+                    }
+                    setState(() => section = i);
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 8),
@@ -334,9 +341,22 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const Divider(direction: Axis.vertical),
         Expanded(
-          child: CustomScrollView(
-            key: ValueKey(section),
-            slivers: _sectionSlivers(),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.02, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: CustomScrollView(
+              key: ValueKey(section),
+              slivers: _sectionSlivers(),
+            ),
           ),
         ),
       ],
@@ -355,15 +375,34 @@ class _SettingsPageState extends State<SettingsPage> {
               for (var i = 0; i < _sectionTitles.length; i++)
                 MenuFlyoutItem(
                   text: Text(_sectionTitles[i].tl),
-                  onPressed: () => setState(() => section = i),
+                  onPressed: () {
+                  if (i == 5) {
+                    context.to(() => const SyncPage());
+                    return;
+                  }
+                  setState(() => section = i);
+                },
                 ),
             ],
           ),
         ),
         Expanded(
-          child: CustomScrollView(
-            key: ValueKey(section),
-            slivers: _sectionSlivers(),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.02, 0),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: CustomScrollView(
+              key: ValueKey(section),
+              slivers: _sectionSlivers(),
+            ),
           ),
         ),
       ],
@@ -388,10 +427,17 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(title.tl),
             subtitle: Text(_sectionTitles[sec].tl),
             trailing: const Icon(FluentIcons.chevron_right, size: 14),
-            onPressed: () => setState(() {
-              section = sec;
-              settingsQuery = "";
-            }),
+            onPressed: () {
+              if (sec == 5) {
+                setState(() => settingsQuery = "");
+                context.to(() => const SyncPage());
+                return;
+              }
+              setState(() {
+                section = sec;
+                settingsQuery = "";
+              });
+            },
           ),
         );
       },
@@ -1210,6 +1256,20 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
             ),
+          ),
+          buildItem(
+            title: "Text shadow".tl,
+            subtitle: "Add shadows to text and icons".tl,
+            action: ToggleSwitch(
+                checked:
+                    appdata.settings["themeTextShadow"] == true,
+                onChanged: (value) {
+                  setState(() {
+                    appdata.settings["themeTextShadow"] = value;
+                  });
+                  appdata.writeData();
+                  StateController.findOrNull(tag: "MyApp")?.update();
+                }),
           ),
           buildItem(
               title: "Language".tl,

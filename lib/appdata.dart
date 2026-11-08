@@ -54,6 +54,7 @@ class _Appdata {
     "themeBackgroundOpacity": 0.5,
     "themeBackgroundColor": "",
     "themeBackgroundBlur": 0.0,
+    "themeTextShadow": false,
     "privateMode": false,
     "lockEnabled": false,
     "lockPassword": "",

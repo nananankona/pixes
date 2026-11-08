@@ -21,8 +21,13 @@ This is a fork of [wgh136/pixes](https://github.com/wgh136/pixes) with the follo
 - Data export / import
 - Token login (login with config file)
 - Supabase sync (sync search/browsing history and settings across devices)
+- Custom theme (accent color, background color/image, blur, text shadow)
+- Slideshow, auto-download, folder organization, search presets
+- Novel TTS reading (VOICEVOX / CapCut) and Google search on selection
 
 [Japanese README is here](README_JA.md)
+
+[Docs](docs/README.md) (Japanese)
 
 ## Download
 

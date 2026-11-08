@@ -287,7 +287,10 @@
         "Search settings": "搜索设置",
         "No results": "无结果",
         "Illust": "插画",
-        "Open": "打开"
+        "Open": "打开",
+        "Text shadow": "文字阴影",
+        "Add shadows to text and icons": "为文字和图标添加阴影",
+        "Search with Google": "用Google搜索"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -577,7 +580,10 @@
         "Search settings": "搜尋設定",
         "No results": "無結果",
         "Illust": "插畫",
-        "Open": "開啟"
+        "Open": "開啟",
+        "Text shadow": "文字陰影",
+        "Add shadows to text and icons": "為文字和圖示添加陰影",
+        "Search with Google": "用Google搜尋"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -867,7 +873,10 @@
         "Search settings": "설정 검색",
         "No results": "결과 없음",
         "Illust": "일러스트",
-        "Open": "열기"
+        "Open": "열기",
+        "Text shadow": "텍스트 그림자",
+        "Add shadows to text and icons": "텍스트와 아이콘에 그림자 추가",
+        "Search with Google": "Google에서 검색"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1206,6 +1215,9 @@
         "Background blur": "背景のぼかし",
         "Search settings": "設定を検索",
         "No results": "結果がありません",
-        "Illust": "イラスト"
+        "Illust": "イラスト",
+        "Text shadow": "文字シャドウ",
+        "Add shadows to text and icons": "文字とアイコンに影をつける",
+        "Search with Google": "Googleで検索"
     }
 }

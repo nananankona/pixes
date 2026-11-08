@@ -145,6 +145,15 @@ class MyApp extends StatelessWidget {
                 }
                 final bgBlur = ((appdata.settings["themeBackgroundBlur"] as num?)?.toDouble() ?? 0.0).clamp(0.0, 30.0);
                 hasBg = hasBg || bgTint != null;
+                final textShadow = appdata.settings["themeTextShadow"] == true;
+                // Translucent surfaces so the wallpaper shows through
+                // cards, menus, flyouts and dialogs instead of solid white.
+                final cardTranslucent = hasBg
+                    ? colorScheme.surfaceContainer.withValues(alpha: 0.82)
+                    : null;
+                final menuTranslucent = hasBg
+                    ? colorScheme.surfaceContainer.withValues(alpha: 0.9)
+                    : null;
 return FluentApp(
                      navigatorKey: App.rootNavigatorKey,
                      debugShowCheckedModeBanner: false,
@@ -156,6 +165,8 @@ theme: FluentThemeData(
                           navigationPaneTheme: NavigationPaneThemeData(
                             backgroundColor: hasBg ? Colors.transparent : null,
                           ),
+                          cardColor: cardTranslucent,
+                          menuColor: menuTranslucent,
                           fontFamily: _getCustomFont() ?? (App.isWindows ? "Microsoft YaHei UI" : null),
                           // apply primary color from settings if provided
                           accentColor: AccentColor.swatch({
@@ -217,6 +228,16 @@ style: TextStyle(
                               fontFamily: font,
                               fontFamilyFallback: fallback,
                               color: colorScheme.onSurface,
+                              shadows: textShadow
+                                  ? [
+                                      Shadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.75),
+                                        offset: const Offset(0, 1),
+                                        blurRadius: 4,
+                                      ),
+                                    ]
+                                  : null,
                             ),
                            child: OverlayWidget(child),
                          ),
@@ -225,6 +246,22 @@ style: TextStyle(
                         
 
 
+                       if (textShadow) {
+                          widget = IconTheme(
+                            data: IconTheme.of(context).merge(
+                              const IconThemeData(
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0xBF000000),
+                                    offset: Offset(0, 1),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            child: widget,
+                          );
+                        }
                        if (bgFile != null || bgTint != null) {
                           final bgOpacity = ((appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 0.5).clamp(0.05, 1.0);
                           Widget bgLayer = bgTint != null

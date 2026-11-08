@@ -17,6 +17,7 @@ import 'package:pixes/services/tts_service.dart';
 import 'package:pixes/pages/image_page.dart';
 import 'package:pixes/pages/main_page.dart';
 import 'package:pixes/utils/ext.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import 'package:pixes/utils/translation.dart';
 
 class NovelReadingPage extends StatefulWidget {
@@ -36,6 +37,8 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
   String? translatedContent;
 
   final ScrollController _scrollController = ScrollController();
+
+  String _selectedText = "";
 
   Timer? _scrollTimer;
 
@@ -208,6 +211,32 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       content: Stack(
         children: [
           SelectionArea(
+              onSelectionChanged: (content) {
+                _selectedText = content?.plainText.trim() ?? "";
+              },
+              contextMenuBuilder: (context, selectableRegionState) {
+                final items =
+                    selectableRegionState.contextMenuButtonItems.toList();
+                final query = _selectedText;
+                if (query.isNotEmpty && query.length <= 120) {
+                  items.add(
+                    ContextMenuButtonItem(
+                      onPressed: () {
+                        ContextMenuController.removeAny();
+                        launchUrlString(
+                          "https://www.google.com/search?q=${Uri.encodeQueryComponent(query)}",
+                          mode: LaunchMode.externalApplication,
+                        );
+                      },
+                      label: "Search with Google".tl,
+                    ),
+                  );
+                }
+                return AdaptiveTextSelectionToolbar.buttonItems(
+                  buttonItems: items,
+                  anchors: selectableRegionState.contextMenuAnchors,
+                );
+              },
               child: DefaultTextStyle.merge(
             style: const TextStyle(fontSize: 16.0, height: 1.6),
             child: NotificationListener<UserScrollNotification>(
