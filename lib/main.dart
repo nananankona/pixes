@@ -127,22 +127,33 @@ class MyApp extends StatelessWidget {
                     (brightness == Brightness.light ? light : dark) ??
                         md.ColorScheme.fromSeed(
                             seedColor: Colors.blue, brightness: brightness);
+                final bgFile = _backgroundFile();
+                final hasBg = bgFile != null;
+                Color accentBase;
+                try {
+                  final custom = appdata.settings["accentColor"] as String?;
+                  accentBase = (custom != null && custom.isNotEmpty) ? _hexToColor(custom) : colorScheme.primary;
+                } catch (_) {
+                  accentBase = colorScheme.primary;
+                }
 return FluentApp(
                      navigatorKey: App.rootNavigatorKey,
                      debugShowCheckedModeBanner: false,
                      title: 'pixes',
 theme: FluentThemeData(
                           brightness: brightness,
+                          scaffoldBackgroundColor: hasBg ? Colors.transparent : null,
+                          micaBackgroundColor: hasBg ? Colors.transparent : null,
                           fontFamily: _getCustomFont() ?? (App.isWindows ? "Microsoft YaHei UI" : null),
                           // apply primary color from settings if provided
                           accentColor: AccentColor.swatch({
-                            'darkest': darken(colorScheme.primary, 30),
-                            'darker': darken(colorScheme.primary, 20),
-                            'dark': darken(colorScheme.primary, 10),
-                            'normal': colorScheme.primary,
-                            'light': lighten(colorScheme.primary, 10),
-                            'lighter': lighten(colorScheme.primary, 20),
-                            'lightest': lighten(colorScheme.primary, 30)
+                            'darkest': darken(accentBase, 30),
+                            'darker': darken(accentBase, 20),
+                            'dark': darken(accentBase, 10),
+                            'normal': accentBase,
+                            'light': lighten(accentBase, 10),
+                            'lighter': lighten(accentBase, 20),
+                            'lightest': lighten(accentBase, 30)
                           }),
 // Icon color from settings
 iconTheme: IconThemeData(
@@ -202,6 +213,20 @@ style: TextStyle(
                         
 
 
+                       if (bgFile != null) {
+                          final bgOpacity = ((appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 0.5).clamp(0.05, 1.0);
+                          widget = Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Opacity(
+                                  opacity: bgOpacity,
+                                  child: Image.file(bgFile, fit: BoxFit.cover),
+                                ),
+                              ),
+                              Positioned.fill(child: widget),
+                            ],
+                          );
+                        }
                        return KeyEventListener(child: widget);
                      });
               },
@@ -235,6 +260,17 @@ Color lighten(Color c, [int percent = 10]) {
     _floatToInt8(c.g + (1 - c.g) * p),
     _floatToInt8(c.b + (1 - c.b) * p),
   );
+}
+
+File? _backgroundFile() {
+  try {
+    final p = appdata.settings["themeBackground"] as String?;
+    if (p == null || p.isEmpty) return null;
+    final f = File(p);
+    return f.existsSync() ? f : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Convert a hex color string like "#RRGGBB" or "RRGGBB" to a [Color]

@@ -276,7 +276,12 @@
         "Search Presets": "搜索预设",
         "Preset name": "预设名称",
         "Save current": "保存当前设置",
-        "Live sync": "实时同步"
+        "Live sync": "实时同步",
+        "Accent color": "强调色",
+        "Background image": "背景图片",
+        "Background opacity": "背景不透明度",
+        "Custom": "自定义",
+        "Clear": "清除"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -555,7 +560,12 @@
         "Search Presets": "搜尋預設",
         "Preset name": "預設名稱",
         "Save current": "儲存目前設定",
-        "Live sync": "即時同步"
+        "Live sync": "即時同步",
+        "Accent color": "強調色",
+        "Background image": "背景圖片",
+        "Background opacity": "背景不透明度",
+        "Custom": "自訂",
+        "Clear": "清除"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -834,7 +844,12 @@
         "Search Presets": "검색 프리셋",
         "Preset name": "프리셋 이름",
         "Save current": "현재 설정 저장",
-        "Live sync": "실시간 동기화"
+        "Live sync": "실시간 동기화",
+        "Accent color": "강조 색",
+        "Background image": "배경 이미지",
+        "Background opacity": "배경 불투명도",
+        "Custom": "사용자 지정",
+        "Clear": "지우기"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1164,6 +1179,10 @@
         "Search Presets": "検索プリセット",
         "Preset name": "プリセット名",
         "Save current": "現在の設定を保存",
-        "Live sync": "リアルタイム同期"
+        "Live sync": "リアルタイム同期",
+        "Accent color": "アクセントカラー",
+        "Background image": "背景画像",
+        "Background opacity": "背景の不透明度",
+        "Custom": "カスタム"
     }
 }

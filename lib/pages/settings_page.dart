@@ -84,6 +84,57 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+  Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    var cleaned = hex.replaceFirst('#', '');
+    if (cleaned.length == 6) cleaned = 'FF$cleaned';
+    if (cleaned.length != 8) return null;
+    final v = int.tryParse(cleaned, radix: 16);
+    if (v == null) return null;
+    return Color(v);
+  }
+
+  Widget _accentDot(BuildContext context, String? hex) {
+    final current = (appdata.settings["accentColor"] as String?) ?? "";
+    final selected =
+        (hex == null && current.isEmpty) || (hex != null && hex.toUpperCase() == current.toUpperCase());
+    final color = hex == null
+        ? FluentTheme.of(context).accentColor.normal
+        : _parseHexColor(hex) ?? FluentTheme.of(context).accentColor.normal;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          appdata.settings["accentColor"] = hex ?? "";
+        });
+        appdata.writeData();
+        StateController.findOrNull(tag: "MyApp")?.update();
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: hex == null ? null : color,
+          gradient: hex == null
+              ? LinearGradient(colors: [
+                  FluentTheme.of(context).accentColor.light,
+                  FluentTheme.of(context).accentColor.dark,
+                ])
+              : null,
+          border: Border.all(
+            color: selected
+                ? FluentTheme.of(context).accentColor
+                : ColorScheme.of(context).outlineVariant,
+            width: selected ? 3 : 1,
+          ),
+        ),
+        child: hex == null
+            ? const Icon(FluentIcons.clear, size: 14)
+            : null,
+      ),
+    );
+  }
+
   @override
   int section = 0;
 
@@ -740,39 +791,138 @@ class _SettingsPageState extends State<SettingsPage> {
                               StateController.findOrNull(tag: "MyApp")?.update();
                             }),
                       ])),
-                        // Background image selection (disabled – custom theme removed)
-                        // buildItem(
-                        //   title: "Background Image".tl,
-                        //   subtitle: appdata.settings["themeBackground"]?.isEmpty ?? true ? "Default".tl : appdata.settings["themeBackground"],
-                        //   action: Button(
-                        //     child: Text("Select".tl).fixWidth(64),
-                        //     onPressed: () async {
-                        //       final XFile? file = await openFile(
-                        //         acceptedTypeGroups: [
-                        //           XTypeGroup(label: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp'])
-                        //         ],
-                        //       );
-                        //       if (file != null) {
-                        //         setState(() {
-                        //           appdata.settings["themeBackground"] = file.path;
-                        //         });
-                        //         appdata.writeData();
-                        //         StateController.findOrNull(tag: "MyApp")?.update();
-                        //       }
-                        //     },
-                        //   ),
-                        // ),
-// Primary color (hex) with color picker (disabled – custom theme removed)
-            // buildItem(
-            //   title: "Primary Color".tl,
-            //   subtitle: appdata.settings["themeColor"]?.isEmpty ?? true ? "Default".tl : appdata.settings["themeColor"],
-            //   action: Button(
-            //     child: Text("Set".tl).fixWidth(64),
-            //     onPressed: () async {
-            //       await _pickHexColor("Primary Color".tl, "themeColor");
-            //     },
-            //   ),
-            // ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Accent color".tl, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _accentDot(context, null),
+                      for (final hex in [
+                        '#0078D4', '#E81123', '#FF8C00', '#10893E',
+                        '#00B7C3', '#8764B8', '#E3008C',
+                      ])
+                        _accentDot(context, hex),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Button(
+                        onPressed: () => _pickHexColor(
+                            "Accent color".tl, "accentColor"),
+                        child: Text("Custom".tl).fixWidth(64),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["accentColor"] = "";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        },
+                        child: Text("Default".tl).fixWidth(64),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          buildItem(
+            title: "Background image".tl,
+            subtitle: () {
+              final p = appdata.settings["themeBackground"] as String?;
+              return (p == null || p.isEmpty) ? "Default".tl : p;
+            }(),
+            action: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Button(
+                  child: Text("Select".tl).fixWidth(64),
+                  onPressed: () async {
+                    XFile? file;
+                    try {
+                      file = await openFile(
+                        acceptedTypeGroups: [
+                          XTypeGroup(
+                            label: 'Image',
+                            extensions: const [
+                              'png', 'jpg', 'jpeg', 'webp'
+                            ],
+                            // Required on iOS (extensions are ignored there).
+                            uniformTypeIdentifiers: const ['public.image'],
+                          ),
+                        ],
+                      );
+                    } catch (_) {
+                      if (context.mounted) {
+                        context.showToast(message: 'Failed to open file'.tl);
+                      }
+                      return;
+                    }
+                    if (file != null) {
+                      setState(() {
+                        appdata.settings["themeBackground"] = file!.path;
+                      });
+                      appdata.writeData();
+                      StateController.findOrNull(tag: "MyApp")?.update();
+                    }
+                  },
+                ),
+                if ((appdata.settings["themeBackground"] as String?)
+                        ?.isNotEmpty ==
+                    true)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Button(
+                      child: Text("Clear".tl).fixWidth(64),
+                      onPressed: () {
+                        setState(() {
+                          appdata.settings["themeBackground"] = "";
+                        });
+                        appdata.writeData();
+                        StateController.findOrNull(tag: "MyApp")?.update();
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          buildItem(
+            title: "Background opacity".tl,
+            subtitle: ((appdata.settings["themeBackgroundOpacity"] as num?)
+                        ?.toDouble() ??
+                    0.5)
+                .toStringAsFixed(2),
+            action: SizedBox(
+              width: 160,
+              child: Slider(
+                value: ((appdata.settings["themeBackgroundOpacity"] as num?)
+                        ?.toDouble() ??
+                    0.5)
+                    .clamp(0.05, 1.0),
+                min: 0.05,
+                max: 1.0,
+                onChanged: (v) {
+                  setState(() {
+                    appdata.settings["themeBackgroundOpacity"] = v;
+                  });
+                  appdata.writeSettings();
+                  StateController.findOrNull(tag: "MyApp")?.update();
+                },
+              ),
+            ),
+          ),
           buildItem(
               title: "Language".tl,
               action: DropDownButton(
@@ -1231,85 +1381,7 @@ ${"Some keywords will be replaced by the following rule:".tl}
 ${"Multiple path separators will be automatically replaced with a single".tl}
 """;
 
-  // Helper: show a simple hex color picker (RGB sliders)
-  Future<void> _pickHexColor(String title, String settingKey) async {
-    // parse existing hex or default to white
-    String current = (appdata.settings[settingKey] ?? "");
-    int r = 255, g = 255, b = 255;
-    if (current.startsWith('#') && current.length == 7) {
-      try {
-        r = int.parse(current.substring(1, 3), radix: 16);
-        g = int.parse(current.substring(3, 5), radix: 16);
-        b = int.parse(current.substring(5, 7), radix: 16);
-      } catch (_) {}
-    }
-    double rVal = r.toDouble();
-    double gVal = g.toDouble();
-    double bVal = b.toDouble();
-    await showDialog(
-      context: context,
-      builder: (c) => ContentDialog(
-        title: Text(title),
-        content: StatefulBuilder(
-          builder: (context, innerSetState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('R'),
-              Slider(
-                min: 0,
-                max: 255,
-                divisions: 255,
-                value: rVal,
-                onChanged: (v) => innerSetState(() => rVal = v),
-              ),
-              const Text('G'),
-              Slider(
-                min: 0,
-                max: 255,
-                divisions: 255,
-                value: gVal,
-                onChanged: (v) => innerSetState(() => gVal = v),
-              ),
-              const Text('B'),
-              Slider(
-                min: 0,
-                max: 255,
-                divisions: 255,
-                value: bVal,
-                onChanged: (v) => innerSetState(() => bVal = v),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 40,
-                color: Color.fromRGBO(rVal.toInt(), gVal.toInt(), bVal.toInt(), 1),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          Button(
-            child: Text('Confirm'.tl),
-            onPressed: () {
-              final hex = '#'
-                  '${rVal.toInt().toRadixString(16).padLeft(2, '0')}'
-                  '${gVal.toInt().toRadixString(16).padLeft(2, '0')}'
-                  '${bVal.toInt().toRadixString(16).padLeft(2, '0')}';
-              setState(() {
-                appdata.settings[settingKey] = hex;
-              });
-              appdata.writeData();
-              StateController.findOrNull(tag: "MyApp")?.update();
-              c.pop();
-            },
-          ),
-        ],
-      ),
-    );
-    }
-
 }
-
 
 class _BlockTagsPage extends StatefulWidget {
   const _BlockTagsPage();
