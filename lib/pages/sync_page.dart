@@ -16,6 +16,33 @@ class SyncPage extends StatefulWidget {
 }
 
 class _SyncPageState extends State<SyncPage> {
+  @override
+  Widget build(BuildContext context) {
+    return ScaffoldPage(
+      padding: EdgeInsets.zero,
+      content: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TitleBar(title: "Sync Settings".tl),
+          const SizedBox(height: 16),
+          const SyncSettingsForm(showBack: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared sync settings form, also embedded in the settings page.
+class SyncSettingsForm extends StatefulWidget {
+  const SyncSettingsForm({this.showBack = true, super.key});
+
+  final bool showBack;
+
+  @override
+  State<SyncSettingsForm> createState() => _SyncSettingsFormState();
+}
+
+class _SyncSettingsFormState extends State<SyncSettingsForm> {
   final _urlCtl = TextEditingController();
   final _keyCtl = TextEditingController();
   final _nameCtl = TextEditingController();
@@ -111,6 +138,7 @@ class _SyncPageState extends State<SyncPage> {
   }
 
   Future<void> _syncNow() async {
+    if (_syncing || _connecting) return;
     _save();
     setState(() {
       _syncing = true;
@@ -204,13 +232,8 @@ class _SyncPageState extends State<SyncPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      padding: EdgeInsets.zero,
-      content: ListView(
-        padding: const EdgeInsets.all(16),
+    return Column(
         children: [
-          TitleBar(title: "Sync Settings".tl),
-          const SizedBox(height: 16),
           // Enable toggle
           Card(
             child: Padding(
@@ -288,7 +311,7 @@ class _SyncPageState extends State<SyncPage> {
           ),
           const SizedBox(height: 16),
           // Actions
-          Row(children: [
+          Wrap(spacing: 12, runSpacing: 12, children: [
             FilledButton(
               onPressed: (_connecting || _syncing) ? null : _connect,
               child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -299,9 +322,9 @@ class _SyncPageState extends State<SyncPage> {
                 Text("Test Connection".tl),
               ]),
             ),
-            const SizedBox(width: 12),
             FilledButton(
-              onPressed: (!_enabled || _syncing) ? null : _syncNow,
+              onPressed:
+                  (!_enabled || _syncing || _connecting) ? null : _syncNow,
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (_syncing) ...[
                   const SizedBox(width: 12, height: 12, child: ProgressRing(strokeWidth: 2)),
@@ -310,8 +333,12 @@ class _SyncPageState extends State<SyncPage> {
                 Text("Sync Now".tl),
               ]),
             ),
-            const SizedBox(width: 12),
-            Button(onPressed: _syncing ? null : () => context.pop(), child: Text("Back".tl)),
+            if (widget.showBack) ...[
+              const SizedBox(width: 12),
+              Button(
+                  onPressed: _syncing ? null : () => context.pop(),
+                  child: Text("Back".tl)),
+            ],
           ]),
           if (_syncing) ...[
             const SizedBox(height: 12),
@@ -346,7 +373,6 @@ class _SyncPageState extends State<SyncPage> {
             _setupGuideCard(),
           ],
         ],
-      ),
     );
   }
 

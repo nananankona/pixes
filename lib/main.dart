@@ -35,7 +35,9 @@ void main() {
       Log.info("Startup", "$name: ${stopwatch.elapsedMilliseconds}ms");
     }
 
-    Future.delayed(const Duration(seconds: 3), checkUpdate);
+    if (appdata.settings["checkUpdate"] != false) {
+      Future.delayed(const Duration(seconds: 3), checkUpdate);
+    }
     WidgetsFlutterBinding.ensureInitialized();
     FlutterError.onError = (details) {
       Log.error("Unhandled", "${details.exception}\n${details.stack}");

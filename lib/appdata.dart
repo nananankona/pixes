@@ -143,10 +143,17 @@ class _Appdata {
       for (var key in json.keys) {
         if (json[key] != null) {
           if (json[key] is List && settings[key] is List) {
-            for (int i = 0;
-                i < json[key].length && i < settings[key].length;
-                i++) {
-              settings[key][i] = json[key][i];
+            if (key == "shortcuts") {
+              // Fixed-length key bindings: merge index-wise.
+              for (int i = 0;
+                  i < json[key].length && i < settings[key].length;
+                  i++) {
+                settings[key][i] = json[key][i];
+              }
+            } else {
+              // Variable-length lists (history, block tags, recent
+              // colors): restore wholesale, or restarts wipe them.
+              settings[key] = List.from(json[key]);
             }
           } else {
             settings[key] = json[key];

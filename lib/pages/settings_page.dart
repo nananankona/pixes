@@ -435,14 +435,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    // Sync section opens its page directly.
-                    if (i == 5) {
-                      context.to(() => const SyncPage());
-                      return;
-                    }
-                    setState(() => section = i);
-                  },
+                  onTap: () => setState(() => section = i),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 8),
@@ -507,13 +500,7 @@ class _SettingsPageState extends State<SettingsPage> {
               for (var i = 0; i < _sectionTitles.length; i++)
                 MenuFlyoutItem(
                   text: Text(_sectionTitles[i].tl),
-                  onPressed: () {
-                  if (i == 5) {
-                    context.to(() => const SyncPage());
-                    return;
-                  }
-                  setState(() => section = i);
-                },
+                  onPressed: () => setState(() => section = i),
                 ),
             ],
           ),
@@ -559,17 +546,10 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(title.tl),
             subtitle: Text(_sectionTitles[sec].tl),
             trailing: const Icon(FluentIcons.chevron_right, size: 14),
-            onPressed: () {
-              if (sec == 5) {
-                setState(() => settingsQuery = "");
-                context.to(() => const SyncPage());
-                return;
-              }
-              setState(() {
-                section = sec;
-                settingsQuery = "";
-              });
-            },
+            onPressed: () => setState(() {
+              section = sec;
+              settingsQuery = "";
+            }),
           ),
         );
       },
@@ -2111,21 +2091,10 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
   Widget buildSync() {
-    return SliverToBoxAdapter(
-      child: Column(
-        children: [
-          buildItem(
-              title: "Sync Settings".tl,
-              subtitle: appdata.settings["syncEnabled"] == true
-                  ? "Enabled".tl
-                  : "Disabled".tl,
-              action: Button(
-                child: Text("Open".tl).fixWidth(64),
-                onPressed: () {
-                  context.to(() => const SyncPage());
-                },
-              )),
-        ],
+    return const SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        child: SyncSettingsForm(showBack: false),
       ),
     );
   }

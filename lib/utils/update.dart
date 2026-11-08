@@ -36,29 +36,49 @@ bool compareVersion(String a, String b) {
   return false;
 }
 
-/// Latest release's MSIX asset URL (Windows), or null.
-Future<String?> getWindowsInstallerUrl() async {
+class _ReleaseInfo {
+  final String tag;
+  final String htmlUrl;
+  final String? msixUrl;
+  _ReleaseInfo(this.tag, this.htmlUrl, this.msixUrl);
+}
+
+/// Latest GitHub release (tag, page URL, MSIX asset URL), or null.
+Future<_ReleaseInfo?> getLatestRelease() async {
   try {
     var dio = AppDio();
     var res = await dio.get<Map<String, dynamic>>(
         "https://api.github.com/repos/nananankona/pixes/releases/latest");
-    final assets = (res.data?['assets'] as List?) ?? [];
+    final data = res.data;
+    if (data == null) return null;
+    String? msix;
+    final assets = (data['assets'] as List?) ?? [];
     for (final a in assets) {
       if (a is Map && (a['name'] as String? ?? '').endsWith('.msix')) {
-        return a['browser_download_url'] as String?;
+        msix = a['browser_download_url'] as String?;
       }
     }
+    return _ReleaseInfo(
+      (data['tag_name'] ?? '').toString(),
+      (data['html_url'] ??
+              'https://github.com/nananankona/pixes/releases/latest')
+          .toString(),
+      msix,
+    );
   } catch (e) {
-    Log.warning("Update", "Failed to resolve installer: $e");
+    Log.warning("Update", "Failed to resolve release: $e");
+    return null;
   }
-  return null;
+}
+
+/// Latest release's MSIX asset URL (Windows), or null.
+Future<String?> getWindowsInstallerUrl() async {
+  return (await getLatestRelease())?.msixUrl;
 }
 
 /// Downloads the Windows installer with progress, then opens it.
-Future<void> downloadAndInstallWindows(
+Future<void> downloadAndInstallWindows(String url,
     void Function(int received, int total) onProgress) async {
-  final url = await getWindowsInstallerUrl();
-  if (url == null) throw "No installer found in the latest release";
   final tmp = File(
       '${Directory.systemTemp.path}/pixes_update_${DateTime.now().millisecondsSinceEpoch}.msix');
   var dio = AppDio();
@@ -76,6 +96,8 @@ Future<void> checkUpdate({bool manual = false}) async {
   if (appdata.account == null && !manual) return;
   try {
     var latestVersion = await getLatestVersion();
+    final release = await getLatestRelease();
+    final msixUrl = release?.msixUrl;
     if (compareVersion(latestVersion, App.version)) {
       showDialog(
           context: App.rootNavigatorKey.currentContext!,
@@ -138,7 +160,11 @@ Future<void> checkUpdate({bool manual = false}) async {
                           ),
                         );
                         try {
-                          await downloadAndInstallWindows((rx, total) {
+                          if (msixUrl == null) {
+                            throw "No installer found in the latest release";
+                          }
+                          await downloadAndInstallWindows(
+                              msixUrl, (rx, total) {
                             if (total > 0) {
                               refresh?.call(() {
                                 progress = rx / total;
@@ -165,8 +191,44 @@ Future<void> checkUpdate({bool manual = false}) async {
                       })
                 ],
               ));
+    } else if (manual) {
+      showDialog(
+          context: App.rootNavigatorKey.currentContext!,
+          builder: (context) => ContentDialog(
+                title: Text("Up to date".tl),
+                content: Text(
+                  "You are using the latest version.".tl,
+                ),
+                actions: [
+                  FilledButton(
+                    child: Text("OK".tl),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ));
     }
   } catch (e) {
+    if (manual) {
+      final ctx = App.rootNavigatorKey.currentContext;
+      if (ctx != null) {
+        showDialog(
+            context: ctx,
+            builder: (context) => ContentDialog(
+                  title: Text("Check failed".tl),
+                  content: Text("$e"),
+                  actions: [
+                    FilledButton(
+                      child: Text("OK".tl),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ));
+      }
+    }
     // ignore
   }
 }

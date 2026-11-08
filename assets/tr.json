@@ -328,7 +328,11 @@
         "Mirror": "镜像",
         "Show original": "显示原图",
         "Show preview": "显示预览",
-        "Receive updates instantly": "即时接收更新"
+        "Receive updates instantly": "即时接收更新",
+        "Up to date": "已是最新",
+        "You are using the latest version.": "您正在使用最新版本。",
+        "Check failed": "检查失败",
+        "OK": "确定"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -659,7 +663,11 @@
         "Mirror": "鏡像",
         "Show original": "顯示原圖",
         "Show preview": "顯示預覽",
-        "Receive updates instantly": "即時接收更新"
+        "Receive updates instantly": "即時接收更新",
+        "Up to date": "已是最新",
+        "You are using the latest version.": "您正在使用最新版本。",
+        "Check failed": "檢查失敗",
+        "OK": "確定"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1341,7 +1349,11 @@
         "Telegram": "Twitter",
         "Show original": "原寸を表示",
         "Show preview": "プレビューを表示",
-        "Receive updates instantly": "更新をリアルタイムで受信"
+        "Receive updates instantly": "更新をリアルタイムで受信",
+        "Up to date": "最新です",
+        "You are using the latest version.": "最新バージョンを使用しています。",
+        "Check failed": "確認に失敗しました",
+        "OK": "OK"
     },
     "es_ES": {
         "Search": "Buscar",
