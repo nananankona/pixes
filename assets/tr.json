@@ -263,7 +263,20 @@
         "Folder organization": "文件夹整理",
         "By author": "按作者",
         "By author and artwork": "按作者和作品",
-        "Custom pattern": "自定义规则"
+        "Custom pattern": "自定义规则",
+        "Selected": "已选中",
+        "Added to downloads": "已加入下载",
+        "Close": "关闭",
+        "Updates available": "有更新",
+        "Title changed": "标题已更改",
+        "Description changed": "简介已更改",
+        "Tags changed": "标签已更改",
+        "Deleted comment": "已删除的评论",
+        "New comment": "新评论",
+        "Search Presets": "搜索预设",
+        "Preset name": "预设名称",
+        "Save current": "保存当前设置",
+        "Live sync": "实时同步"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -529,7 +542,20 @@
         "Folder organization": "資料夾整理",
         "By author": "按作者",
         "By author and artwork": "按作者和作品",
-        "Custom pattern": "自訂規則"
+        "Custom pattern": "自訂規則",
+        "Selected": "已選中",
+        "Added to downloads": "已加入下載",
+        "Close": "關閉",
+        "Updates available": "有更新",
+        "Title changed": "標題已更改",
+        "Description changed": "簡介已更改",
+        "Tags changed": "標籤已更改",
+        "Deleted comment": "已刪除的評論",
+        "New comment": "新評論",
+        "Search Presets": "搜尋預設",
+        "Preset name": "預設名稱",
+        "Save current": "儲存目前設定",
+        "Live sync": "即時同步"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -795,7 +821,20 @@
         "Folder organization": "폴더 정리",
         "By author": "작가별",
         "By author and artwork": "작가 및 작품별",
-        "Custom pattern": "사용자 패턴"
+        "Custom pattern": "사용자 패턴",
+        "Selected": "선택됨",
+        "Added to downloads": "다운로드에 추가됨",
+        "Close": "닫기",
+        "Updates available": "업데이트 있음",
+        "Title changed": "제목 변경됨",
+        "Description changed": "설명 변경됨",
+        "Tags changed": "태그 변경됨",
+        "Deleted comment": "삭제된 댓글",
+        "New comment": "새 댓글",
+        "Search Presets": "검색 프리셋",
+        "Preset name": "프리셋 이름",
+        "Save current": "현재 설정 저장",
+        "Live sync": "실시간 동기화"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1112,6 +1151,19 @@
         "Folder organization": "フォルダ分け",
         "By author": "作者別",
         "By author and artwork": "作者・作品別",
-        "Custom pattern": "カスタム"
+        "Custom pattern": "カスタム",
+        "Selected": "選択中",
+        "Added to downloads": "ダウンロードに追加しました",
+        "Close": "閉じる",
+        "Updates available": "更新があります",
+        "Title changed": "タイトルが変更されました",
+        "Description changed": "説明文が変更されました",
+        "Tags changed": "タグが変更されました",
+        "Deleted comment": "削除されたコメント",
+        "New comment": "新しいコメント",
+        "Search Presets": "検索プリセット",
+        "Preset name": "プリセット名",
+        "Save current": "現在の設定を保存",
+        "Live sync": "リアルタイム同期"
     }
 }

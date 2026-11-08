@@ -7,6 +7,7 @@ import 'package:pixes/components/page_route.dart';
 import 'package:pixes/components/search_field.dart';
 import 'package:pixes/components/user_preview.dart';
 import 'package:pixes/foundation/app.dart';
+import 'package:pixes/network/download.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/pages/illust_page.dart';
 import 'package:pixes/pages/novel_page.dart';
@@ -579,6 +580,10 @@ class _SearchSettingsState extends State<SearchSettings> {
                       .toList(),
                 )),
           const SizedBox(height: 4),
+          _PresetSection(
+            onChanged: widget.onChanged,
+          ),
+          const SizedBox(height: 4),
           Center(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -611,6 +616,98 @@ class _SearchSettingsState extends State<SearchSettings> {
   }
 }
 
+class _PresetSection extends StatefulWidget {
+  const _PresetSection({this.onChanged});
+
+  final void Function()? onChanged;
+
+  @override
+  State<_PresetSection> createState() => _PresetSectionState();
+}
+
+class _PresetSectionState extends State<_PresetSection> {
+  final _nameCtl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final presets = appdata.getSearchPresets();
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Search Presets".tl,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextBox(
+                    controller: _nameCtl,
+                    placeholder: "Preset name".tl,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: () {
+                    if (_nameCtl.text.trim().isEmpty) return;
+                    appdata.saveSearchPreset(_nameCtl.text);
+                    _nameCtl.clear();
+                    widget.onChanged?.call();
+                    setState(() {});
+                  },
+                  child: Text("Save current".tl),
+                ),
+              ],
+            ),
+            if (presets.isNotEmpty) const SizedBox(height: 8),
+            for (final p in presets)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Button(
+                        onPressed: () {
+                          appdata.applySearchPreset(p);
+                          widget.onChanged?.call();
+                          setState(() {});
+                        },
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(p.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(FluentIcons.delete, size: 14),
+                      onPressed: () {
+                        appdata.deleteSearchPreset(p.name);
+                        setState(() {});
+                      },
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class SearchResultPage extends StatefulWidget {
   const SearchResultPage(this.keyword, {super.key});
 
@@ -628,9 +725,42 @@ class _SearchResultPageState
 
   late final controller = TextEditingController(text: widget.keyword);
 
+  bool selecting = false;
+
+  final Map<int, Illust> selected = {};
+
+  void _toggleSelect(Illust illust) {
+    setState(() {
+      if (selected.containsKey(illust.id)) {
+        selected.remove(illust.id);
+      } else {
+        selected[illust.id] = illust;
+      }
+    });
+  }
+
+  void _downloadSelected() {
+    var count = 0;
+    for (final illust in selected.values) {
+      if (!illust.downloaded && !illust.downloading) {
+        DownloadManager().addDownloadingTask(illust);
+        count++;
+      }
+    }
+    setState(() {
+      selected.clear();
+      selecting = false;
+    });
+    if (mounted) {
+      context.showToast(message: "Added to downloads".tl);
+    }
+  }
+
   @override
   void reset() {
     nextUrl = null;
+    _orNextUrls = [];
+    _orSeenIds.clear();
     super.reset();
   }
 
@@ -647,6 +777,38 @@ class _SearchResultPageState
     return CustomScrollView(
       slivers: [
         buildSearchBar(),
+        if (selecting)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ColorScheme.of(context).primaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Text("Selected".tl),
+                  const SizedBox(width: 4),
+                  Text("${selected.length}"),
+                  const Spacer(),
+                  Button(
+                    onPressed: selected.isEmpty ? null : _downloadSelected,
+                    child: Text("Download".tl),
+                  ),
+                  const SizedBox(width: 8),
+                  Button(
+                    onPressed: () => setState(() {
+                      selected.clear();
+                      selecting = false;
+                    }),
+                    child: Text("Cancel".tl),
+                  ),
+                ],
+              ),
+            ),
+          ),
         SliverMasonryGrid(
           gridDelegate: const SliverSimpleGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: 240,
@@ -656,12 +818,45 @@ class _SearchResultPageState
               if (index == data.length - 1) {
                 nextPage();
               }
-              return IllustWidget(
-                data[index],
-                onTap: () {
-                  context.to(() => IllustGalleryPage(
-                      illusts: data, initialPage: index, nextUrl: nextUrl));
-                },
+              final illust = data[index];
+              final isSelected = selected.containsKey(illust.id);
+              return Stack(
+                children: [
+                  IllustWidget(
+                    illust,
+                    onTap: () {
+                      if (selecting) {
+                        _toggleSelect(illust);
+                        return;
+                      }
+                      // OR queries merge multiple result streams, which the
+                      // gallery pager cannot continue. Open without paging.
+                      final orPaging =
+                          _SearchResultPageState.splitOrTerms(keyword).length >
+                                  1
+                              ? null
+                              : nextUrl;
+                      context.to(() => IllustGalleryPage(
+                          illusts: data,
+                          initialPage: index,
+                          nextUrl: orPaging));
+                    },
+                  ),
+                  if (isSelected)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: ColorScheme.of(context).primary,
+                          shape: BoxShape.circle,
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: const Icon(FluentIcons.check_mark,
+                            size: 14, color: Colors.white),
+                      ),
+                    ),
+                ],
               );
             },
             childCount: data.length,
@@ -721,6 +916,23 @@ class _SearchResultPageState
                         width: 4,
                       ),
                       Button(
+                        child: SizedBox(
+                          height: 42,
+                          child: Center(
+                            child: Icon(selecting
+                                ? FluentIcons.check_mark
+                                : FluentIcons.bulleted_list),
+                          ),
+                        ),
+                        onPressed: () => setState(() {
+                          selecting = !selecting;
+                          if (!selecting) selected.clear();
+                        }),
+                      ),
+                      const SizedBox(
+                        width: 4,
+                      ),
+                      Button(
                         child: const SizedBox(
                           height: 42,
                           child: Center(
@@ -751,22 +963,87 @@ class _SearchResultPageState
 
   String? nextUrl;
 
+  List<String?> _orNextUrls = [];
+  final Set<int> _orSeenIds = {};
+
+  static List<String> splitOrTerms(String keyword) {
+    return keyword
+        .split(RegExp(r'\s+OR\s+', caseSensitive: false))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .take(5)
+        .toList();
+  }
+
+  static int compareIllusts(Illust a, Illust b, SearchSort sort) {
+    switch (sort) {
+      case SearchSort.oldToNew:
+        return a.createDate.compareTo(b.createDate);
+      case SearchSort.newToOld:
+        return b.createDate.compareTo(a.createDate);
+      default:
+        return b.totalBookmarks.compareTo(a.totalBookmarks);
+    }
+  }
+
   @override
   Future<Res<List<Illust>>> loadData(page) async {
     if (nextUrl == "end") {
       return Res.error("No more data");
     }
+    final terms = splitOrTerms(keyword);
+    if (terms.length < 2) {
+      if (nextUrl == null) {
+        appdata.addSearchHistory(keyword, 0);
+      }
+      var res = nextUrl == null
+          ? await Network().search(keyword, appdata.searchOptions)
+          : await Network().getIllustsWithNextUrl(nextUrl!);
+      if (!res.error) {
+        nextUrl = res.subData;
+        nextUrl ??= "end";
+      }
+      return res;
+    }
     if (nextUrl == null) {
       appdata.addSearchHistory(keyword, 0);
+      _orNextUrls = List.filled(terms.length, null);
+      _orSeenIds.clear();
     }
-    var res = nextUrl == null
-        ? await Network().search(keyword, appdata.searchOptions)
-        : await Network().getIllustsWithNextUrl(nextUrl!);
-    if (!res.error) {
-      nextUrl = res.subData;
-      nextUrl ??= "end";
+    while (_orNextUrls.length < terms.length) {
+      _orNextUrls.add(null);
     }
-    return res;
+    final results = await Future.wait([
+      for (var i = 0; i < terms.length; i++)
+        () async {
+          final u = _orNextUrls[i];
+          if (u == "end") return null;
+          try {
+            final r = u == null
+                ? await Network().search(terms[i], appdata.searchOptions)
+                : await Network().getIllustsWithNextUrl(u);
+            return MapEntry(i, r);
+          } catch (_) {
+            return null;
+          }
+        }(),
+    ]);
+    var merged = <Illust>[];
+    var anySuccess = false;
+    for (final e in results) {
+      if (e == null || e.value.error) continue;
+      anySuccess = true;
+      _orNextUrls[e.key] = e.value.subData ?? "end";
+      for (final it in e.value.data) {
+        if (_orSeenIds.add(it.id)) merged.add(it);
+      }
+    }
+    if (!anySuccess) {
+      return Res.error("No more data");
+    }
+    merged.sort((a, b) => compareIllusts(a, b, appdata.searchOptions.sort));
+    nextUrl = _orNextUrls.any((u) => u != "end") ? "more" : "end";
+    return Res(merged, subData: nextUrl);
   }
 }
 
@@ -844,10 +1121,32 @@ class _SearchNovelResultPageState
 
   late final controller = TextEditingController(text: widget.keyword);
 
+  List<String?> _orNextUrls = [];
+  final Set<String> _orSeenKeys = {};
+
+  @override
+  void reset() {
+    nextUrl = null;
+    _orNextUrls = [];
+    _orSeenKeys.clear();
+    super.reset();
+  }
+
   void search() {
     if (keyword != oldKeyword) {
       oldKeyword = keyword;
       reset();
+    }
+  }
+
+  static int compareNovels(Novel a, Novel b, SearchSort sort) {
+    switch (sort) {
+      case SearchSort.oldToNew:
+        return a.createDate.compareTo(b.createDate);
+      case SearchSort.newToOld:
+        return b.createDate.compareTo(a.createDate);
+      default:
+        return b.totalBookmarks.compareTo(a.totalBookmarks);
     }
   }
 
@@ -957,17 +1256,60 @@ class _SearchNovelResultPageState
     if (nextUrl == "end") {
       return Res.error("No more data");
     }
+    final terms = _SearchResultPageState.splitOrTerms(keyword);
+    if (terms.length < 2) {
+      if (nextUrl == null) {
+        appdata.addSearchHistory(keyword, 1);
+      }
+      var res = nextUrl == null
+          ? await Network().searchNovels(keyword, appdata.searchOptions)
+          : await Network().getNovelsWithNextUrl(nextUrl!);
+      if (!res.error) {
+        nextUrl = res.subData;
+        nextUrl ??= "end";
+      }
+      return res;
+    }
     if (nextUrl == null) {
       appdata.addSearchHistory(keyword, 1);
+      _orNextUrls = List.filled(terms.length, null);
+      _orSeenKeys.clear();
     }
-    var res = nextUrl == null
-        ? await Network().searchNovels(keyword, appdata.searchOptions)
-        : await Network().getNovelsWithNextUrl(nextUrl!);
-    if (!res.error) {
-      nextUrl = res.subData;
-      nextUrl ??= "end";
+    while (_orNextUrls.length < terms.length) {
+      _orNextUrls.add(null);
     }
-    return res;
+    final results = await Future.wait([
+      for (var i = 0; i < terms.length; i++)
+        () async {
+          final u = _orNextUrls[i];
+          if (u == "end") return null;
+          try {
+            final r = u == null
+                ? await Network().searchNovels(terms[i], appdata.searchOptions)
+                : await Network().getNovelsWithNextUrl(u);
+            return MapEntry(i, r);
+          } catch (_) {
+            return null;
+          }
+        }(),
+    ]);
+    var merged = <Novel>[];
+    var anySuccess = false;
+    for (final e in results) {
+      if (e == null || e.value.error) continue;
+      anySuccess = true;
+      _orNextUrls[e.key] = e.value.subData ?? "end";
+      for (final it in e.value.data) {
+        if (_orSeenKeys.add('${it.id}')) merged.add(it);
+      }
+    }
+    if (!anySuccess) {
+      return Res.error("No more data");
+    }
+    merged.sort(
+        (a, b) => _SearchNovelResultPageState.compareNovels(a, b, appdata.searchOptions.sort));
+    nextUrl = _orNextUrls.any((u) => u != "end") ? "more" : "end";
+    return Res(merged, subData: nextUrl);
   }
 }
 

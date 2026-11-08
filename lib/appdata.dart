@@ -199,13 +199,81 @@ class _Appdata {
     _cachedHistory = [];
     _saveHistoryToFile([]);
     syncService.notifyChange();
+    // Propagate the clear so other devices converge too.
+    syncService.deleteRemoteSearchHistory();
   }
 
   void removeSearchHistory(String keyword, int searchType) {
     final list = getSearchHistory();
+    final removed = list.length;
     list.removeWhere((e) => e.keyword == keyword && e.searchType == searchType);
+    if (list.length == removed) return;
     _cachedHistory = list;
     _saveHistoryToFile(list);
+    syncService.notifyChange();
+    syncService.deleteRemoteSearchRow(keyword, searchType);
+  }
+
+  List<SearchPreset>? _cachedPresets;
+
+  String get _presetPath => "${App.dataPath}/search_presets.json";
+
+  List<SearchPreset> getSearchPresets() {
+    _cachedPresets ??= _loadPresetsFromFile();
+    return List.from(_cachedPresets!);
+  }
+
+  List<SearchPreset> _loadPresetsFromFile() {
+    try {
+      final file = File(_presetPath);
+      if (!file.existsSync()) return [];
+      final raw = file.readAsStringSync();
+      if (raw.isEmpty) return [];
+      final list = jsonDecode(raw) as List;
+      return list
+          .map((e) => SearchPreset.fromJson(e as Map<String, dynamic>))
+          .where((e) => e.name.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  void _savePresetsToFile(List<SearchPreset> list) {
+    try {
+      File(_presetPath)
+          .writeAsStringSync(jsonEncode(list.map((e) => e.toJson()).toList()));
+    } catch (_) {}
+  }
+
+  void saveSearchPreset(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    final list = getSearchPresets();
+    list.removeWhere((e) => e.name == trimmed);
+    list.insert(0,
+        SearchPreset(name: trimmed, options: searchOptions.toJson()));
+    _cachedPresets = list;
+    _savePresetsToFile(list);
+    syncService.notifyChange();
+  }
+
+  void applySearchPreset(SearchPreset preset) {
+    searchOptions.applyJson(Map<String, dynamic>.from(preset.options));
+    writeData();
+  }
+
+  void deleteSearchPreset(String name) {
+    final list = getSearchPresets();
+    list.removeWhere((e) => e.name == name);
+    _cachedPresets = list;
+    _savePresetsToFile(list);
+    syncService.notifyChange();
+  }
+
+  void importSearchPresets(List<SearchPreset> list) {
+    _cachedPresets = List.from(list);
+    _savePresetsToFile(list);
     syncService.notifyChange();
   }
 

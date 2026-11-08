@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pixes/appdata.dart';
 import 'package:pixes/foundation/history.dart';
 import 'package:pixes/foundation/log.dart';
 import 'package:pixes/network/models.dart';
+import 'package:pixes/services/realtime_sync.dart';
 import 'package:uuid/uuid.dart';
 
 /// Reports sync progress: phase label key, completed items, total items.
@@ -47,6 +49,9 @@ alter table sync_devices disable row level security;
 alter table sync_settings disable row level security;
 alter table sync_search_history disable row level security;
 alter table sync_browsing_history disable row level security;
+-- Realtime delete sync needs full row data in DELETE events:
+alter table sync_search_history replica identity full;
+alter table sync_browsing_history replica identity full;
 */
 
 class SyncService {
@@ -56,10 +61,15 @@ class SyncService {
 
   Dio? _dio;
   Timer? _debounceTimer;
+  Timer? _realtimePullTimer;
   int? lastStatusCode;
   bool _stopped = false;
   bool _pulling = false;
   bool _busy = false;
+  bool _applyingRemote = false;
+
+  /// True while the realtime channel is connected.
+  ValueListenable<bool> get live => realtimeSync.connected;
 
   String? get _url => appdata.settings["syncUrl"] as String?;
   String? get _key => appdata.settings["syncKey"] as String?;
@@ -128,6 +138,9 @@ class SyncService {
     _dio = null;
     _debounceTimer?.cancel();
     _debounceTimer = null;
+    _realtimePullTimer?.cancel();
+    _realtimePullTimer = null;
+    realtimeSync.stop();
     _stopped = false;
   }
 
@@ -135,12 +148,102 @@ class SyncService {
     if (!enabled) return;
     if (!_ensureDio()) return;
     _pullAll();
+    _startRealtime();
+  }
+
+  void _startRealtime() {
+    final url = _url;
+    final key = _key;
+    if (url == null || key == null) return;
+    realtimeSync.start(
+      supabaseUrl: url,
+      apiKey: key,
+      onEvent: _onRealtimeEvent,
+    );
+  }
+
+  void _onRealtimeEvent(String table, String type,
+      Map<String, dynamic> record, Map<String, dynamic>? oldRecord) {
+    if (_stopped || !enabled) return;
+    if (type == 'DELETE') {
+      _applyRemoteDelete(table, record, oldRecord);
+      return;
+    }
+    // Coalesce bursts of upserts into one pull (correct merge, no
+    // per-row timestamp bookkeeping needed).
+    _realtimePullTimer?.cancel();
+    _realtimePullTimer = Timer(const Duration(seconds: 1), () {
+      if (_stopped || !enabled || _pulling || _busy) return;
+      _pullAll();
+    });
+  }
+
+  void _applyRemoteDelete(String table, Map<String, dynamic> record,
+      Map<String, dynamic>? oldRecord) {
+    final row = oldRecord ?? record;
+    _applyingRemote = true;
+    try {
+      if (table == 'sync_search_history') {
+        final keyword = (row['keyword'] ?? '').toString();
+        final searchType = int.tryParse('${row['search_type'] ?? -1}') ?? -1;
+        if (keyword.isNotEmpty && searchType >= 0) {
+          appdata.removeSearchHistory(keyword, searchType);
+        }
+      } else if (table == 'sync_browsing_history') {
+        final id = int.tryParse('${row['illust_id'] ?? ''}');
+        if (id != null) {
+          HistoryManager().remove(id);
+        }
+      }
+    } finally {
+      _applyingRemote = false;
+    }
+  }
+
+  /// Delete all remote search history rows (used when clearing locally).
+  Future<void> deleteRemoteSearchHistory() async {
+    if (!_ensureDio()) return;
+    try {
+      final res = await _dio!.delete('/sync_search_history');
+      if (!_ok(res)) {
+        Log.error("Sync", "Delete remote search history failed: ${res.statusCode}");
+      }
+    } catch (e) {
+      Log.error("Sync", "Delete remote search history failed: $e");
+    }
+  }
+
+  /// Delete one remote search history row.
+  Future<void> deleteRemoteSearchRow(String keyword, int searchType) async {
+    if (!_ensureDio()) return;
+    try {
+      final res = await _dio!.delete('/sync_search_history',
+          queryParameters: {'keyword': 'eq.$keyword', 'search_type': 'eq.$searchType'});
+      if (!_ok(res)) {
+        Log.error("Sync", "Delete remote search row failed: ${res.statusCode}");
+      }
+    } catch (e) {
+      Log.error("Sync", "Delete remote search row failed: $e");
+    }
+  }
+
+  /// Delete all remote browsing history rows (used when clearing locally).
+  Future<void> deleteRemoteBrowsingHistory() async {
+    if (!_ensureDio()) return;
+    try {
+      final res = await _dio!.delete('/sync_browsing_history');
+      if (!_ok(res)) {
+        Log.error("Sync", "Delete remote browsing history failed: ${res.statusCode}");
+      }
+    } catch (e) {
+      Log.error("Sync", "Delete remote browsing history failed: $e");
+    }
   }
 
   void notifyChange() {
     if (!enabled) return;
     if (_stopped) return;
-    if (_pulling || _busy) return;
+    if (_pulling || _busy || _applyingRemote) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(seconds: 2), _pushAll);
   }

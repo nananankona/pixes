@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -241,6 +242,24 @@ class _IllustPageState extends State<IllustPage> {
 
   final _bottomBarController = _BottomBarController();
 
+  final Set<String> selectedTags = {};
+
+  /// Per-artwork override of the global showOriginalImage setting.
+  /// null means "follow global setting".
+  bool? _forceOriginal;
+
+  bool _globalShowOriginal() =>
+      appdata.settings["showOriginalImage"] == true;
+
+  /// Snapshot saved at download time, if this artwork was downloaded.
+  Map<String, dynamic>? _savedInfo;
+  List<dynamic> _savedComments = [];
+  List<Comment> _liveComments = [];
+  List<String> _detectedChanges = [];
+  List<String> _deletedCommentTexts = [];
+  List<String> _newCommentTexts = [];
+  bool _changeChecked = false;
+
   KeyEventListenerState? keyboardListener;
 
   final scrollController = ScrollController();
@@ -266,6 +285,7 @@ class _IllustPageState extends State<IllustPage> {
     if (widget.autoDownloadOnInit) {
       maybeAutoDownloadIllust(widget.illust);
     }
+    _checkDownloadedChanges();
     if (appdata.account!.user.isPremium) {
       IllustGalleryPage.cachedHistoryIds.add(widget.illust.id);
     }
@@ -351,6 +371,11 @@ class _IllustPageState extends State<IllustPage> {
                     constrains.maxWidth,
                     updateCallback: () => setState(() {}),
                     controller: _bottomBarController,
+                    forceOriginal: _forceOriginal,
+                    onToggleOriginal: () => setState(() {
+                      _forceOriginal =
+                          !(_forceOriginal ?? _globalShowOriginal());
+                    }),
                   ),
                 if (!isBlocked)
                   Positioned(
@@ -361,6 +386,25 @@ class _IllustPageState extends State<IllustPage> {
                       child: Icon(_autoScrolling
                           ? FluentIcons.pause
                           : FluentIcons.play),
+                    ),
+                  ),
+                if (!isBlocked && _hasChanges)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: MediaQuery.of(context).padding.top + 4,
+                    child: Center(
+                      child: Button(
+                        onPressed: _showChangeDetails,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(FluentIcons.info, size: 14),
+                            const SizedBox(width: 6),
+                            Text("Updates available".tl),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 if (isBlocked)
@@ -375,6 +419,151 @@ class _IllustPageState extends State<IllustPage> {
             );
           }),
         ),
+      ),
+    );
+  }
+
+  /// Compare the live artwork with the snapshot saved at download time.
+  /// Shows update/deletion info when this artwork was downloaded before.
+  Future<void> _checkDownloadedChanges() async {
+    try {
+      final paths = DownloadManager().getImagePaths(widget.illust.id);
+      if (paths.isEmpty) return;
+      final dir = File(paths.first).parent.path;
+      final infoFile = File('$dir/info_${widget.illust.id}.json');
+      if (!await infoFile.exists()) return;
+      final saved =
+          jsonDecode(await infoFile.readAsString()) as Map<String, dynamic>;
+      final changes = <String>[];
+      if ((saved['title']?.toString() ?? '') != widget.illust.title) {
+        changes.add('title');
+      }
+      if ((saved['caption']?.toString() ?? '') != widget.illust.caption) {
+        changes.add('caption');
+      }
+      final savedTags = ((saved['tags'] as List?) ?? [])
+          .map((e) => (e as Map)['name'].toString())
+          .toSet();
+      final liveTags =
+          widget.illust.tags.map((e) => e.name).toSet();
+      if (savedTags.length != liveTags.length ||
+          !savedTags.containsAll(liveTags)) {
+        changes.add('tags');
+      }
+      List<dynamic> savedComments = [];
+      try {
+        final cf = File('$dir/comments_${widget.illust.id}.json');
+        if (await cf.exists()) {
+          final cj = jsonDecode(await cf.readAsString()) as Map<String, dynamic>;
+          savedComments = (cj['comments'] as List?) ?? [];
+        }
+      } catch (_) {}
+      List<Comment> liveComments = [];
+      try {
+        final res =
+            await Network().getComments(widget.illust.id.toString());
+        if (!res.error) liveComments = res.data;
+      } catch (_) {}
+      final savedIds =
+          savedComments.map((e) => (e as Map)['id'].toString()).toSet();
+      final liveIds = liveComments.map((e) => e.id.toString()).toSet();
+      final deleted = savedComments
+          .where((e) => !liveIds.contains((e as Map)['id'].toString()))
+          .map((e) =>
+              '${(e as Map)['name']}: ${(e as Map)['comment']}')
+          .toList();
+      final added = liveComments
+          .where((e) => !savedIds.contains(e.id.toString()))
+          .map((e) => '${e.name}: ${e.comment}')
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _savedInfo = saved;
+        _savedComments = savedComments;
+        _liveComments = liveComments;
+        _detectedChanges = changes;
+        _deletedCommentTexts = deleted;
+        _newCommentTexts = added;
+        _changeChecked = true;
+      });
+    } catch (_) {
+      // Best effort only; never break the page.
+    }
+  }
+
+  bool get _hasChanges =>
+      _changeChecked &&
+      (_detectedChanges.isNotEmpty ||
+          _deletedCommentTexts.isNotEmpty ||
+          _newCommentTexts.isNotEmpty);
+
+  void _showChangeDetails() {
+    final rows = <Widget>[];
+    if (_detectedChanges.contains('title')) {
+      rows.add(_changeRow("Title changed".tl,
+          "${_savedInfo?['title'] ?? ''}\n→ ${widget.illust.title}"));
+    }
+    if (_detectedChanges.contains('caption')) {
+      rows.add(_changeRow("Description changed".tl, ""));
+    }
+    if (_detectedChanges.contains('tags')) {
+      final savedTags = ((_savedInfo?['tags'] as List?) ?? [])
+          .map((e) => (e as Map)['name'].toString())
+          .toSet();
+      final liveTags = widget.illust.tags.map((e) => e.name).toSet();
+      final added = liveTags.difference(savedTags);
+      final removed = savedTags.difference(liveTags);
+      final buf = StringBuffer();
+      if (added.isNotEmpty) buf.writeln("+ ${added.join(', ')}");
+      if (removed.isNotEmpty) buf.writeln("- ${removed.join(', ')}");
+      rows.add(_changeRow("Tags changed".tl, buf.toString().trim()));
+    }
+    for (final c in _deletedCommentTexts.take(10)) {
+      rows.add(_changeRow("Deleted comment".tl, c));
+    }
+    if (_deletedCommentTexts.length > 10) {
+      rows.add(Text("... +${_deletedCommentTexts.length - 10}".tl));
+    }
+    for (final c in _newCommentTexts.take(10)) {
+      rows.add(_changeRow("New comment".tl, c));
+    }
+    if (_newCommentTexts.length > 10) {
+      rows.add(Text("... +${_newCommentTexts.length - 10}".tl));
+    }
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: Text("Updates available".tl),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: rows,
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            child: Text("Close".tl),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _changeRow(String title, String body) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          if (body.isNotEmpty)
+            SelectableText(body, style: const TextStyle(fontSize: 12)),
+        ],
       ),
     );
   }
@@ -507,15 +696,43 @@ class _IllustPageState extends State<IllustPage> {
               if (e.translatedName != null && e.name != e.translatedName) {
                 text += "/${e.translatedName}";
               }
+              final selected = selectedTags.contains(e.name);
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
                   onTap: () {
-                    context.to(() => SearchResultPage(e.name));
+                    if (selectedTags.isNotEmpty) {
+                      setState(() {
+                        if (selected) {
+                          selectedTags.remove(e.name);
+                        } else {
+                          selectedTags.add(e.name);
+                        }
+                      });
+                    } else {
+                      context.to(() => SearchResultPage(e.name));
+                    }
+                  },
+                  onLongPress: () {
+                    setState(() {
+                      if (selected) {
+                        selectedTags.remove(e.name);
+                      } else {
+                        selectedTags.add(e.name);
+                      }
+                    });
+                    if (mounted) {
+                      context.showToast(
+                          message:
+                              "${selectedTags.length} tags selected".tl);
+                    }
                   },
                   child: Card(
                     padding:
                         const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                    borderColor: selected
+                        ? ColorScheme.of(context).primary
+                        : null,
                     child: Text(
                       text,
                       style: const TextStyle(fontSize: 13),
@@ -525,7 +742,30 @@ class _IllustPageState extends State<IllustPage> {
               );
             }).toList(),
           ),
-        ).paddingHorizontal(10).paddingBottom(8),
+        ).paddingHorizontal(10).paddingBottom(selectedTags.isEmpty ? 8 : 0),
+        if (selectedTags.isNotEmpty)
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Button(
+                  onPressed: () {
+                    final query = selectedTags.join(' ');
+                    setState(() => selectedTags.clear());
+                    context.to(() => SearchResultPage(query));
+                  },
+                  child: Text(
+                      "${"Search".tl} (${selectedTags.length})"),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: () => setState(selectedTags.clear),
+                  child: Text("Clear".tl),
+                ),
+              ],
+            ),
+          ),
       ],
     ).paddingAll(4);
   }
@@ -628,7 +868,7 @@ class _IllustPageState extends State<IllustPage> {
     }
     Widget image;
 
-    var imageUrl = appdata.settings["showOriginalImage"]
+    var imageUrl = (_forceOriginal ?? _globalShowOriginal())
         ? widget.illust.images[index].original
         : widget.illust.images[index].large;
 
@@ -708,7 +948,10 @@ class _BottomBarController {
 
 class _BottomBar extends StatefulWidget {
   const _BottomBar(this.illust, this.height, this.width,
-      {this.updateCallback, this.controller});
+      {this.updateCallback,
+      this.controller,
+      this.forceOriginal,
+      this.onToggleOriginal});
 
   final void Function()? updateCallback;
 
@@ -719,6 +962,11 @@ class _BottomBar extends StatefulWidget {
   final double width;
 
   final _BottomBarController? controller;
+
+  /// Per-artwork override of the global showOriginalImage setting.
+  final bool? forceOriginal;
+
+  final VoidCallback? onToggleOriginal;
 
   @override
   State<_BottomBar> createState() => _BottomBarState();
@@ -906,6 +1154,23 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
           children: [
             buildAuthor(),
             ...buildActions(constrains.maxWidth),
+            if (widget.onToggleOriginal != null)
+              Builder(builder: (context) {
+                final useOriginal = widget.forceOriginal ??
+                    appdata.settings["showOriginalImage"] == true;
+                return Tooltip(
+                  message: (useOriginal ? "Show preview".tl : "Show original".tl),
+                  child: IconButton(
+                    icon: Icon(
+                      useOriginal
+                          ? MdIcons.high_quality
+                          : MdIcons.image_outlined,
+                      size: 18,
+                    ),
+                    onPressed: widget.onToggleOriginal,
+                  ),
+                );
+              }),
             const Spacer(),
             if (animationController.value == 1)
               IconButton(

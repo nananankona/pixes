@@ -361,6 +361,60 @@ class SearchOptions {
   DateTime? endTime;
   AgeLimit ageLimit = AgeLimit.unlimited;
   bool includeAiGeneratedWorks = false;
+
+  Map<String, dynamic> toJson() => {
+        'matchType': matchType.name,
+        'favoriteNumber': favoriteNumber.name,
+        'sort': sort.name,
+        'startTime': startTime?.toIso8601String(),
+        'endTime': endTime?.toIso8601String(),
+        'ageLimit': ageLimit.name,
+        'includeAiGeneratedWorks': includeAiGeneratedWorks,
+      };
+
+  void applyJson(Map<String, dynamic> json) {
+    for (final v in KeywordMatchType.values) {
+      if (v.name == json['matchType']) matchType = v;
+    }
+    // Legacy value from before upstream fix #34.
+    if (json['matchType'] == 'titleOrDescriptionSearch') {
+      matchType = KeywordMatchType.mainText;
+    }
+    for (final v in FavoriteNumber.values) {
+      if (v.name == json['favoriteNumber']) favoriteNumber = v;
+    }
+    for (final v in SearchSort.values) {
+      if (v.name == json['sort']) sort = v;
+    }
+    final st = json['startTime'];
+    startTime = st is String ? DateTime.tryParse(st) : null;
+    final et = json['endTime'];
+    endTime = et is String ? DateTime.tryParse(et) : null;
+    for (final v in AgeLimit.values) {
+      if (v.name == json['ageLimit']) ageLimit = v;
+    }
+    includeAiGeneratedWorks = json['includeAiGeneratedWorks'] == true;
+  }
+
+  static SearchOptions fromJson(Map<String, dynamic> json) {
+    final o = SearchOptions();
+    o.applyJson(json);
+    return o;
+  }
+}
+
+class SearchPreset {
+  String name;
+  Map<String, dynamic> options;
+
+  SearchPreset({required this.name, required this.options});
+
+  Map<String, dynamic> toJson() => {'name': name, 'options': options};
+
+  factory SearchPreset.fromJson(Map<String, dynamic> json) => SearchPreset(
+        name: (json['name'] ?? '').toString(),
+        options: Map<String, dynamic>.from(json['options'] as Map? ?? {}),
+      );
 }
 
 class SearchHistoryEntry {

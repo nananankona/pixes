@@ -6,6 +6,7 @@ import 'package:pixes/components/segmented_button.dart';
 import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/foundation/history.dart';
+import 'package:pixes/network/download.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/utils/translation.dart';
 
@@ -63,25 +64,116 @@ class _LocalHistoryPageState extends State<LocalHistoryPage> {
 
   var data = <IllustHistory>[];
 
+  bool selecting = false;
+
+  final Set<int> selected = {};
+
+  bool _busy = false;
+
+  Future<void> _downloadSelected() async {
+    if (selected.isEmpty || _busy) return;
+    setState(() => _busy = true);
+    var count = 0;
+    for (final id in selected.toList()) {
+      try {
+        final res = await Network().getIllustByID(id.toString());
+        if (!res.error &&
+            !res.data.downloaded &&
+            !res.data.downloading) {
+          DownloadManager().addDownloadingTask(res.data);
+          count++;
+        }
+      } catch (_) {}
+    }
+    if (mounted) {
+      setState(() {
+        selected.clear();
+        selecting = false;
+        _busy = false;
+      });
+      context.showToast(message: "Added to downloads".tl);
+    } else {
+      _busy = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constrains) {
-      return MasonryGridView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 8) +
-            EdgeInsets.only(bottom: context.padding.bottom),
-        gridDelegate: const SliverSimpleGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 240,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Row(
+            children: [
+              Button(
+                onPressed: _busy
+                    ? null
+                    : () => setState(() {
+                          selecting = !selecting;
+                          if (!selecting) selected.clear();
+                        }),
+                child: Text(selecting ? "Done".tl : "Select".tl),
+              ),
+              if (selecting) ...[
+                const SizedBox(width: 8),
+                Text("Selected".tl),
+                const SizedBox(width: 4),
+                Text("${selected.length}"),
+                const Spacer(),
+                Button(
+                  onPressed:
+                      (selected.isEmpty || _busy) ? null : _downloadSelected,
+                  child: Text(_busy ? "..." : "Download".tl),
+                ),
+                const SizedBox(width: 8),
+                Button(
+                  onPressed: _busy
+                      ? null
+                      : () => setState(() {
+                            selected.clear();
+                            selecting = false;
+                          }),
+                  child: Text("Cancel".tl),
+                ),
+              ],
+            ],
+          ),
         ),
-        itemCount: HistoryManager().length,
-        itemBuilder: (context, index) {
-          if (index == data.length) {
-            data.addAll(HistoryManager().getHistories(page));
-            page++;
-          }
-          return IllustHistoryWidget(data[index]);
-        },
-      );
-    });
+        Expanded(
+          child: LayoutBuilder(builder: (context, constrains) {
+            return MasonryGridView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8) +
+                  EdgeInsets.only(bottom: context.padding.bottom),
+              gridDelegate:
+                  const SliverSimpleGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 240,
+              ),
+              itemCount: HistoryManager().length,
+              itemBuilder: (context, index) {
+                if (index == data.length) {
+                  data.addAll(HistoryManager().getHistories(page));
+                  page++;
+                }
+                final item = data[index];
+                return IllustHistoryWidget(
+                  item,
+                  selected: selected.contains(item.id),
+                  onTap: selecting
+                      ? () => setState(() {
+                            if (selected.contains(item.id)) {
+                              selected.remove(item.id);
+                            } else {
+                              selected.add(item.id);
+                            }
+                          })
+                      : null,
+                );
+              },
+            );
+          }),
+        ),
+      ],
+    );
   }
 }
 

@@ -342,7 +342,8 @@ class _SyncPageState extends State<SyncPage> {
     );
   }
 
-  Widget _statusCard() {    final searchCount = _counts['searchHistory'] ?? 0;
+  Widget _statusCard() {
+    final searchCount = _counts['searchHistory'] ?? 0;
     final browseCount = _counts['browsingHistory'] ?? 0;
     final statusText = _connected ? "Connected".tl : "Disconnected".tl;
     final statusColor = _connected ? Colors.green : Colors.orange;
@@ -353,6 +354,14 @@ class _SyncPageState extends State<SyncPage> {
           Text("Status".tl, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
           _statRow("Status".tl, statusText, statusColor),
+          ValueListenableBuilder<bool>(
+            valueListenable: syncService.live,
+            builder: (context, live, _) => _statRow(
+              "Live sync".tl,
+              live ? "Connected".tl : "Off".tl,
+              live ? Colors.green : null,
+            ),
+          ),
           _statRow("Device".tl, syncService.deviceName.isNotEmpty ? syncService.deviceName : "Unnamed".tl, null),
           _statRow("Search History".tl, searchCount.toString(), null),
           _statRow("Browse History".tl, browseCount.toString(), null),
@@ -442,6 +451,9 @@ alter table sync_devices disable row level security;
 alter table sync_settings disable row level security;
 alter table sync_search_history disable row level security;
 alter table sync_browsing_history disable row level security;
+-- Realtime delete sync needs full row data in DELETE events:
+alter table sync_search_history replica identity full;
+alter table sync_browsing_history replica identity full;
     """.trim();
     final accent = FluentTheme.of(context).accentColor;
     final surface = FluentTheme.of(context).micaBackgroundColor;

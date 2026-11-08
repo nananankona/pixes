@@ -123,8 +123,15 @@ class HistoryManager {
     return res;
   }
 
-  void importAll(List<IllustHistory> list) {
-    _db.execute('BEGIN TRANSACTION');
+  void remove(int id) {
+    _db.execute('delete from history where id = ?', [id]);
+  }
+
+  void clear() {
+    _db.execute('delete from history');
+  }
+
+  void importAll(List<IllustHistory> list) {    _db.execute('BEGIN TRANSACTION');
     try {
       _db.execute('delete from history');
       final stmt = _db.prepare('''

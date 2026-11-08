@@ -14,6 +14,27 @@ import 'md.dart';
 
 typedef UpdateFavoriteFunc = void Function(bool v);
 
+/// Badge shown on artworks whose author is followed, next to the R18 badge.
+Widget followingBadge(BuildContext context) {
+  return Positioned(
+    top: 12,
+    left: 12,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: ColorScheme.of(context).primaryContainer,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+            color: ColorScheme.of(context).outlineVariant, width: 0.6),
+      ),
+      child: Text(
+        "Following".tl,
+        style: const TextStyle(fontSize: 12),
+      ),
+    ),
+  );
+}
+
 class IllustWidget extends StatefulWidget {
   const IllustWidget(this.illust, {this.onTap, super.key});
 
@@ -221,6 +242,8 @@ class _IllustWidgetState extends State<IllustWidget> {
                         ),
                       )),
                 ),
+              if (widget.illust.author.isFollowed)
+                followingBadge(context),
               Positioned(
                 top: 16,
                 right: 16,
@@ -338,9 +361,13 @@ class _IllustWidgetState extends State<IllustWidget> {
 }
 
 class IllustHistoryWidget extends StatelessWidget {
-  const IllustHistoryWidget(this.illust, {super.key});
+  const IllustHistoryWidget(this.illust, {this.onTap, this.selected = false, super.key});
 
   final IllustHistory illust;
+
+  final void Function()? onTap;
+
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -362,16 +389,36 @@ class IllustHistoryWidget extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 margin: EdgeInsets.zero,
                 child: GestureDetector(
-                  onTap: () {
-                    context.to(() => IllustPageWithId(illust.id.toString()));
-                  },
+                  onTap: onTap ??
+                      () {
+                        context.to(
+                            () => IllustPageWithId(illust.id.toString()));
+                      },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(4.0),
-                    child: AnimatedImage(
-                      image: CachedImageProvider(illust.imgPath),
-                      fit: BoxFit.cover,
-                      width: width - 16.0,
-                      height: height - 16.0,
+                    child: Stack(
+                      children: [
+                        AnimatedImage(
+                          image: CachedImageProvider(illust.imgPath),
+                          fit: BoxFit.cover,
+                          width: width - 16.0,
+                          height: height - 16.0,
+                        ),
+                        if (selected)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: ColorScheme.of(context).primary,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              child: const Icon(FluentIcons.check_mark,
+                                  size: 14, color: Colors.white),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),

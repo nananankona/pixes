@@ -85,29 +85,82 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
   @override
+  int section = 0;
+
+  static const _sectionTitles = [
+    "Account",
+    "Browse",
+    "Download",
+    "Appearance",
+    "Security",
+    "Sync",
+    "About",
+  ];
+
+  static const _sectionIcons = [
+    MdIcons.person,
+    MdIcons.explore,
+    MdIcons.download,
+    MdIcons.palette,
+    MdIcons.security,
+    MdIcons.sync,
+    MdIcons.info,
+  ];
+
+  List<Widget> _sectionSlivers() {
+    final title = _sectionTitles[section].tl;
+    final Widget body;
+    switch (section) {
+      case 0:
+        body = buildAccount();
+        break;
+      case 1:
+        body = buildBrowse();
+        break;
+      case 2:
+        body = buildDownload();
+        break;
+      case 3:
+        body = buildAppearance();
+        break;
+      case 4:
+        body = buildSecurity();
+        break;
+      case 5:
+        body = buildSync();
+        break;
+      default:
+        body = buildAbout();
+        break;
+    }
+    return [
+      SliverTitleBar(title: title),
+      body,
+      SliverPadding(padding: EdgeInsets.only(bottom: context.padding.bottom)),
+    ];
+  }
+
   Widget build(BuildContext context) {
     return ScaffoldPage(
       padding: EdgeInsets.zero,
-      content: CustomScrollView(
-        slivers: [
-          SliverTitleBar(title: "Settings".tl),
-          buildHeader("Account".tl),
-          buildAccount(),
-          buildHeader("Browse".tl),
-          buildBrowse(),
-          buildHeader("Download".tl),
-          buildDownload(),
-           buildHeader("Appearance".tl),
-           buildAppearance(),
-            buildHeader("Security".tl),
-            buildSecurity(),
-            buildHeader("Sync".tl),
-            buildSync(),
-            buildHeader("About".tl),
-           buildAbout(),
-          SliverPadding(
-              padding: EdgeInsets.only(bottom: context.padding.bottom)),
-        ],
+      content: NavigationView(
+        pane: NavigationPane(
+          selected: section,
+          onChanged: (i) => setState(() => section = i),
+          displayMode: PaneDisplayMode.compact,
+          items: [
+            for (var i = 0; i < _sectionTitles.length; i++)
+              PaneItem(
+                icon: Icon(_sectionIcons[i], size: 18),
+                title: Text(_sectionTitles[i].tl),
+                body: const SizedBox.shrink(),
+              ),
+          ],
+        ),
+        content: CustomScrollView(
+          key: ValueKey(section),
+          slivers: _sectionSlivers(),
+        ),
       ),
     );
   }
