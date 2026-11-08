@@ -142,8 +142,8 @@ class _CommentsPageState extends MultiPageLoadingState<CommentsPage, Comment> {
   Widget buildBottom(BuildContext context) {
     return Card(
       padding: EdgeInsets.zero,
-      backgroundColor:
-          FluentTheme.of(context).micaBackgroundColor.toOpacity(0.96),
+      // cardColor follows the theme (see illust_page bottom bar).
+      backgroundColor: FluentTheme.of(context).cardColor,
       child: SizedBox(
         height: 52,
         child: TextBox(

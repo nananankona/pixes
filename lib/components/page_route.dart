@@ -373,8 +373,8 @@ class SideBarRoute<T> extends PageRoute<T> {
       Animation<double> secondaryAnimation) {
     if (App.isAndroid) {
       return Container(
-        decoration: BoxDecoration(
-            color: FluentTheme.of(context).micaBackgroundColor.toOpacity(0.98)),
+        decoration:
+            BoxDecoration(color: FluentTheme.of(context).cardColor),
         child: child,
       );
     }
@@ -389,9 +389,7 @@ class SideBarRoute<T> extends PageRoute<T> {
             bottom: 0,
             child: Container(
               decoration: BoxDecoration(
-                  color: FluentTheme.of(context)
-                      .micaBackgroundColor
-                      .toOpacity(0.98),
+                  color: FluentTheme.of(context).cardColor,
                   borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
                       bottomLeft: Radius.circular(4))),

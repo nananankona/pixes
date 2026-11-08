@@ -1120,8 +1120,10 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
             child: Card(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(8)),
-              backgroundColor:
-                  FluentTheme.of(context).micaBackgroundColor.toOpacity(0.96),
+              // cardColor follows the theme: solid normally, translucent
+              // when a wallpaper is set. (micaBackgroundColor becomes
+              // transparent with wallpaper, which toOpacity() turns black.)
+              backgroundColor: FluentTheme.of(context).cardColor,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: SizedBox(
                 width: double.infinity,
@@ -1203,14 +1205,20 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
       isFollowing = true;
     });
     var method = widget.illust.author.isFollowed ? "delete" : "add";
-    var res =
-        await Network().follow(widget.illust.author.id.toString(), method);
-    if (res.error) {
+    try {
+      var res =
+          await Network().follow(widget.illust.author.id.toString(), method);
+      if (res.error) {
+        if (mounted) {
+          context.showToast(message: "Network Error");
+        }
+      } else {
+        widget.illust.author.isFollowed = !widget.illust.author.isFollowed;
+      }
+    } catch (_) {
       if (mounted) {
         context.showToast(message: "Network Error");
       }
-    } else {
-      widget.illust.author.isFollowed = !widget.illust.author.isFollowed;
     }
     setState(() {
       isFollowing = false;
@@ -1307,18 +1315,27 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
     widget.illust.isBookmarked = added;
     IllustWidget.favoriteCallbacks[widget.illust.id.toString()]?.call(added);
     setState(() {});
-    var res =
-        await Network().addBookmark(widget.illust.id.toString(), method, type);
-    if (res.error) {
+    try {
+      var res = await Network()
+          .addBookmark(widget.illust.id.toString(), method, type);
+      if (res.error) {
+        widget.illust.isBookmarked = !added;
+        IllustWidget.favoriteCallbacks[widget.illust.id.toString()]
+            ?.call(!added);
+        if (mounted) {
+          context.showToast(message: "Network Error");
+        }
+      } else if (added &&
+          appdata.settings["favoriteAutoSave"] == true &&
+          !widget.illust.downloaded) {
+        DownloadManager().addDownloadingTask(widget.illust);
+      }
+    } catch (_) {
       widget.illust.isBookmarked = !added;
       IllustWidget.favoriteCallbacks[widget.illust.id.toString()]?.call(!added);
       if (mounted) {
         context.showToast(message: "Network Error");
       }
-    } else if (added &&
-        appdata.settings["favoriteAutoSave"] == true &&
-        !widget.illust.downloaded) {
-      DownloadManager().addDownloadingTask(widget.illust);
     }
     if (mounted) {
       setState(() {
