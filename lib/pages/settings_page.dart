@@ -135,6 +135,42 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Widget _themeColorDot(
+      BuildContext context, String settingKey, String? hex) {
+    final current = (appdata.settings[settingKey] as String?) ?? "";
+    final selected =
+        (hex == null && current.isEmpty) || (hex != null && hex.toUpperCase() == current.toUpperCase());
+    final color = hex == null
+        ? null
+        : _parseHexColor(hex) ?? FluentTheme.of(context).accentColor.normal;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          appdata.settings[settingKey] = hex ?? "";
+        });
+        appdata.writeData();
+        StateController.findOrNull(tag: "MyApp")?.update();
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          border: Border.all(
+            color: selected
+                ? FluentTheme.of(context).accentColor
+                : ColorScheme.of(context).outlineVariant,
+            width: selected ? 3 : 1,
+          ),
+        ),
+        child: hex == null
+            ? const Icon(FluentIcons.clear, size: 14)
+            : null,
+      ),
+    );
+  }
+
   Widget _bgColorDot(BuildContext context, String? hex) {
     final current = (appdata.settings["themeBackgroundColor"] as String?) ?? "";
     final selected =
@@ -185,6 +221,8 @@ class _SettingsPageState extends State<SettingsPage> {
     [1, "Loop slideshow"],
     [1, "Emphasize artworks from following artists"],
     [1, "Novel auto-scroll speed"], [1, "Illust auto-scroll speed"],
+    [3, "Text shadow"], [3, "Text color"], [3, "Shadow color"],
+    [3, "Card opacity"],
     [1, "Auto advance to next artwork"],
     [2, "Download Path"], [2, "Subpath"], [2, "Max parallels"],
     [2, "Folder organization"], [2, "Auto download on view"],
@@ -1270,6 +1308,125 @@ class _SettingsPageState extends State<SettingsPage> {
                   appdata.writeData();
                   StateController.findOrNull(tag: "MyApp")?.update();
                 }),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Text color".tl, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _themeColorDot(context, "themeTextColor", null),
+                      for (final hex in [
+                        '#000000', '#FFFFFF', '#E81123', '#FF8C00',
+                        '#0078D4', '#10893E', '#8764B8',
+                      ])
+                        _themeColorDot(context, "themeTextColor", hex),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Button(
+                        onPressed: () => _pickHexColor(
+                            "Text color".tl, "themeTextColor"),
+                        child: Text("Custom".tl).fixWidth(64),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["themeTextColor"] = "";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        },
+                        child: Text("Default".tl).fixWidth(64),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Shadow color".tl, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _themeColorDot(context, "themeShadowColor", null),
+                      for (final hex in [
+                        '#000000', '#FFFFFF', '#E81123', '#0078D4',
+                        '#FF8C00', '#10893E',
+                      ])
+                        _themeColorDot(context, "themeShadowColor", hex),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Button(
+                        onPressed: () => _pickHexColor(
+                            "Shadow color".tl, "themeShadowColor"),
+                        child: Text("Custom".tl).fixWidth(64),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["themeShadowColor"] = "";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        },
+                        child: Text("Default".tl).fixWidth(64),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          buildItem(
+            title: "Card opacity".tl,
+            subtitle: ((appdata.settings["themeCardOpacity"] as num?)
+                        ?.toDouble() ??
+                    0.82)
+                .toStringAsFixed(2),
+            action: SizedBox(
+              width: 160,
+              child: Slider(
+                value: ((appdata.settings["themeCardOpacity"] as num?)
+                        ?.toDouble() ??
+                    0.82)
+                    .clamp(0.2, 1.0),
+                min: 0.2,
+                max: 1.0,
+                onChanged: (v) {
+                  setState(() {
+                    appdata.settings["themeCardOpacity"] = v;
+                  });
+                  appdata.writeSettings();
+                  StateController.findOrNull(tag: "MyApp")?.update();
+                },
+              ),
+            ),
           ),
           buildItem(
               title: "Language".tl,

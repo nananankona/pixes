@@ -290,7 +290,10 @@
         "Open": "打开",
         "Text shadow": "文字阴影",
         "Add shadows to text and icons": "为文字和图标添加阴影",
-        "Search with Google": "用Google搜索"
+        "Search with Google": "用Google搜索",
+        "Text color": "文字颜色",
+        "Shadow color": "阴影颜色",
+        "Card opacity": "卡片不透明度"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -583,7 +586,10 @@
         "Open": "開啟",
         "Text shadow": "文字陰影",
         "Add shadows to text and icons": "為文字和圖示添加陰影",
-        "Search with Google": "用Google搜尋"
+        "Search with Google": "用Google搜尋",
+        "Text color": "文字顏色",
+        "Shadow color": "陰影顏色",
+        "Card opacity": "卡片不透明度"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -876,7 +882,10 @@
         "Open": "열기",
         "Text shadow": "텍스트 그림자",
         "Add shadows to text and icons": "텍스트와 아이콘에 그림자 추가",
-        "Search with Google": "Google에서 검색"
+        "Search with Google": "Google에서 검색",
+        "Text color": "텍스트 색",
+        "Shadow color": "그림자 색",
+        "Card opacity": "카드 불투명도"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1218,6 +1227,9 @@
         "Illust": "イラスト",
         "Text shadow": "文字シャドウ",
         "Add shadows to text and icons": "文字とアイコンに影をつける",
-        "Search with Google": "Googleで検索"
+        "Search with Google": "Googleで検索",
+        "Text color": "文字色",
+        "Shadow color": "影色",
+        "Card opacity": "カード不透明度"
     }
 }

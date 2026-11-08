@@ -146,13 +146,38 @@ class MyApp extends StatelessWidget {
                 final bgBlur = ((appdata.settings["themeBackgroundBlur"] as num?)?.toDouble() ?? 0.0).clamp(0.0, 30.0);
                 hasBg = hasBg || bgTint != null;
                 final textShadow = appdata.settings["themeTextShadow"] == true;
+                Color shadowColor = const Color(0xBF000000);
+                try {
+                  final customShadow =
+                      appdata.settings["themeShadowColor"] as String?;
+                  if (customShadow != null && customShadow.isNotEmpty) {
+                    shadowColor = _hexToColor(customShadow);
+                  }
+                } catch (_) {}
+                Color? customTextColor;
+                try {
+                  final customText =
+                      appdata.settings["themeTextColor"] as String?;
+                  if (customText != null && customText.isNotEmpty) {
+                    customTextColor = _hexToColor(customText);
+                  }
+                } catch (_) {
+                  customTextColor = null;
+                }
+                final cardOpacity =
+                    ((appdata.settings["themeCardOpacity"] as num?)
+                            ?.toDouble() ??
+                        0.82)
+                        .clamp(0.2, 1.0);
                 // Translucent surfaces so the wallpaper shows through
                 // cards, menus, flyouts and dialogs instead of solid white.
                 final cardTranslucent = hasBg
-                    ? colorScheme.surfaceContainer.withValues(alpha: 0.82)
+                    ? colorScheme.surfaceContainer
+                        .withValues(alpha: cardOpacity)
                     : null;
                 final menuTranslucent = hasBg
-                    ? colorScheme.surfaceContainer.withValues(alpha: 0.9)
+                    ? colorScheme.surfaceContainer
+                        .withValues(alpha: (cardOpacity + 0.08).clamp(0.2, 1.0))
                     : null;
 return FluentApp(
                      navigatorKey: App.rootNavigatorKey,
@@ -227,12 +252,11 @@ iconTheme: IconThemeData(
 style: TextStyle(
                               fontFamily: font,
                               fontFamilyFallback: fallback,
-                              color: colorScheme.onSurface,
+                              color: customTextColor ?? colorScheme.onSurface,
                               shadows: textShadow
                                   ? [
                                       Shadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.75),
+                                        color: shadowColor,
                                         offset: const Offset(0, 1),
                                         blurRadius: 4,
                                       ),
@@ -249,11 +273,11 @@ style: TextStyle(
                        if (textShadow) {
                           widget = IconTheme(
                             data: IconTheme.of(context).merge(
-                              const IconThemeData(
+                              IconThemeData(
                                 shadows: [
                                   Shadow(
-                                    color: Color(0xBF000000),
-                                    offset: Offset(0, 1),
+                                    color: shadowColor,
+                                    offset: const Offset(0, 1),
                                     blurRadius: 4,
                                   ),
                                 ],
