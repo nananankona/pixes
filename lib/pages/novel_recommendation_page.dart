@@ -3,6 +3,7 @@ import 'package:pixes/components/grid.dart';
 import 'package:pixes/components/loading.dart';
 import 'package:pixes/components/novel.dart';
 import 'package:pixes/components/title_bar.dart';
+import 'package:pixes/components/batch_download.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/utils/translation.dart';
@@ -21,7 +22,10 @@ class _NovelRecommendationPageState
   Widget buildContent(BuildContext context, List<Novel> data) {
     return Column(
       children: [
-        TitleBar(title: "Recommendation".tl),
+        TitleBar(
+            title: "Recommendation".tl,
+            action: BatchNovelDownloadButton(
+                request: () => Network().getRecommendNovels())),
         Expanded(
           child: GridViewWithFixedItemHeight(
             itemCount: data.length,

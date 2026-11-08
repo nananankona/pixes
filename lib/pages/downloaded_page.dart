@@ -131,6 +131,8 @@ class _DownloadedPageState extends State<DownloadedPage> {
         .where((e) =>
             e.title.toLowerCase().contains(q) ||
             e.novelId.toString().contains(q) ||
+            e.author.toLowerCase().contains(q) ||
+            e.tags.any((t) => t.toLowerCase().contains(q)) ||
             (q.length >= 2 &&
                 (novelTexts[e.filePath]?.contains(q) ?? false)))
         .toList();
@@ -233,7 +235,12 @@ class _DownloadedPageState extends State<DownloadedPage> {
           child: ListTile(
             title: Text(novel.title,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text("${novel.novelId} - $kb KB"),
+            subtitle: Text(
+              [novel.novelId.toString(), if (novel.author.isNotEmpty) novel.author, ...novel.tags.take(3), "${kb}KB"].join("  •  "),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

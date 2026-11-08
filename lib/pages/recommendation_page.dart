@@ -11,6 +11,7 @@ import 'package:pixes/utils/translation.dart';
 
 import '../components/grid.dart';
 import '../components/segmented_button.dart';
+import '../components/batch_download.dart';
 import '../components/user_preview.dart';
 
 class RecommendationPage extends StatefulWidget {
@@ -43,7 +44,16 @@ class _RecommendationPageState extends State<RecommendationPage> {
   Widget buildTab() {
     return TitleBar(
       title: "Explore".tl,
-      action: SegmentedButton<int>(
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (type != 2)
+            BatchDownloadButton(
+                request: () => type == 0
+                    ? Network().getRecommendedIllusts()
+                    : Network().getRecommendedMangas()),
+          if (type != 2) const SizedBox(width: 8),
+          SegmentedButton<int>(
         options: [
           SegmentedButtonOption(0, "Illustrations".tl),
           SegmentedButtonOption(1, "Mangas".tl),
@@ -57,6 +67,8 @@ class _RecommendationPageState extends State<RecommendationPage> {
           }
         },
         value: type,
+        ),
+        ],
       ),
     );
   }

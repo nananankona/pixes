@@ -336,7 +336,14 @@
         "Search in text": "正文内搜索",
         "matches": "条匹配",
         "Paragraph": "段落",
-        "View without history": "不留记录打开"
+        "View without history": "不留记录打开",
+        "Flat": "平铺",
+        "By series": "按系列",
+        "Novel folder organization": "小说文件夹整理",
+        "App": "应用",
+        "Save": "保存",
+        "Saving...": "保存中...",
+        "Bookmarked": "已收藏"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -675,7 +682,14 @@
         "Search in text": "正文內搜尋",
         "matches": "條相符",
         "Paragraph": "段落",
-        "View without history": "不留記錄開啟"
+        "View without history": "不留記錄開啟",
+        "Flat": "平鋪",
+        "By series": "按系列",
+        "Novel folder organization": "小說資料夾整理",
+        "App": "應用程式",
+        "Save": "儲存",
+        "Saving...": "儲存中...",
+        "Bookmarked": "已收藏"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1365,7 +1379,14 @@
         "Search in text": "本文内検索",
         "matches": "件ヒット",
         "Paragraph": "段落",
-        "View without history": "履歴に残さず開く"
+        "View without history": "履歴に残さず開く",
+        "Flat": "フラット",
+        "By series": "シリーズ別",
+        "Novel folder organization": "小説フォルダ分け",
+        "App": "アプリ",
+        "Save": "保存",
+        "Saving...": "保存中...",
+        "Bookmarked": "ブックマーク済み"
     },
     "es_ES": {
         "Search": "Buscar",

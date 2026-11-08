@@ -39,12 +39,16 @@ class DownloadedIllust {
 class DownloadedNovel {
   final int novelId;
   final String title;
+  final String author;
+  final List<String> tags;
   final String filePath;
   final int fileSize;
 
   DownloadedNovel({
     required this.novelId,
     required this.title,
+    this.author = "",
+    this.tags = const [],
     required this.filePath,
     required this.fileSize,
   });
@@ -74,7 +78,17 @@ Future<bool> saveDownloadedNovel(Novel novel, String text,
   try {
     final downloadPath = appdata.settings["downloadPath"] as String?;
     if (downloadPath == null || downloadPath.isEmpty) return false;
-    final dir = Directory("$downloadPath/novel");
+    final folderMode = appdata.settings["novelFolderMode"] as int? ?? 0;
+    var sub = "";
+    if (folderMode == 1) {
+      sub = "/${DownloadingTask._sanitizeComponent(novel.author.name)}";
+    } else if (folderMode == 2) {
+      final series = novel.seriesTitle;
+      sub = (series != null && series.isNotEmpty)
+          ? "/${DownloadingTask._sanitizeComponent(series)}"
+          : "/${DownloadingTask._sanitizeComponent(novel.author.name)}";
+    }
+    final dir = Directory("$downloadPath/novel$sub");
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
@@ -83,6 +97,23 @@ Future<bool> saveDownloadedNovel(Novel novel, String text,
     if (await file.exists() && !overwrite) return true;
     await file.writeAsString(
         "${novel.title}\n${novel.author.name} (id:${novel.author.id})\n\n$text");
+    try {
+      await File("${dir.path}/info_${novel.id}.json").writeAsString(jsonEncode({
+        'id': novel.id,
+        'title': novel.title,
+        'author': {
+          'id': novel.author.id,
+          'name': novel.author.name,
+          'account': novel.author.account,
+        },
+        'tags': novel.tags
+            .map((t) => {'name': t.name, 'translated': t.translatedName})
+            .toList(),
+        'seriesId': novel.seriesId,
+        'seriesTitle': novel.seriesTitle,
+        'savedAt': DateTime.now().toIso8601String(),
+      }));
+    } catch (_) {}
     return true;
   } catch (e) {
     Log.error("Download", "Novel save failed: $e");
@@ -451,7 +482,7 @@ class DownloadManager {
       final dir = Directory("$downloadPath/novel");
       if (!dir.existsSync()) return [];
       final out = <DownloadedNovel>[];
-      for (final e in dir.listSync()) {
+      for (final e in dir.listSync(recursive: true)) {
         if (e is! File) continue;
         if (!e.path.toLowerCase().endsWith('.txt')) continue;
         try {
@@ -461,9 +492,28 @@ class DownloadManager {
           final id = sep > 0 ? int.tryParse(stem.substring(0, sep)) ?? 0 : 0;
           var title = sep >= 0 ? stem.substring(sep + 1) : stem;
           if (title.isEmpty) title = stem;
+          var author = "";
+          var tags = <String>[];
+          try {
+            final infoFile = File(
+                '${File(e.path).parent.path}/info_${id == 0 ? stem : id}.json');
+            if (infoFile.existsSync()) {
+              final info =
+                  jsonDecode(infoFile.readAsStringSync()) as Map<String, dynamic>;
+              title = (info['title'] as String?) ?? title;
+              final a = info['author'];
+              if (a is Map) author = (a['name'] ?? '').toString();
+              tags = ((info['tags'] as List?) ?? [])
+                  .map((t) => t is Map ? (t['name'] ?? '').toString() : '')
+                  .where((t) => t.isNotEmpty)
+                  .toList();
+            }
+          } catch (_) {}
           out.add(DownloadedNovel(
             novelId: id,
             title: title,
+            author: author,
+            tags: tags,
             filePath: e.path,
             fileSize: e.existsSync() ? e.lengthSync() : 0,
           ));
@@ -479,6 +529,21 @@ class DownloadManager {
   void deleteNovel(DownloadedNovel novel) {
     try {
       File(novel.filePath).deleteIfExists();
+      final dir = File(novel.filePath).parent.path;
+      final stem = novel.filePath.split(RegExp(r'[/\\]')).last;
+      final base = stem.endsWith('.txt')
+          ? stem.substring(0, stem.length - 4)
+          : stem;
+      final sep = base.indexOf('_');
+      final key = sep > 0 ? base.substring(0, sep) : base;
+      for (final f in Directory(dir).listSync()) {
+        final fname = f.path.split(RegExp(r'[/\\]')).last;
+        if (f is File && fname == 'info_$key.json') {
+          try {
+            f.deleteSync();
+          } catch (_) {}
+        }
+      }
     } catch (e) {
       Log.error("Download", "Failed to delete novel: $e");
     }

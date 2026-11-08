@@ -41,6 +41,20 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
 
   @override
   void initState() {
+    var start = widget.initialPage;
+    if (start <= 0) {
+      try {
+        final raw = appdata.settings["illustPositions"];
+        if (raw is Map) {
+          final saved = (raw[_shioriKey] as num?)?.toInt();
+          if (saved != null && saved >= 0 && saved < widget.urls.length) {
+            start = saved;
+          }
+        }
+      } catch (_) {}
+    }
+    controller = PageController(initialPage: start);
+    currentPage = start;
     windowManager.addListener(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _precacheNext();
@@ -50,6 +64,18 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
 
   @override
   void dispose() {
+    try {
+      final raw = appdata.settings["illustPositions"];
+      final m = raw is Map
+          ? Map<String, int>.from(raw.map((k, v) => MapEntry(k.toString(), (v as num).toInt())))
+          : <String, int>{};
+      m[_shioriKey] = currentPage;
+      while (m.length > 200) {
+        m.remove(m.keys.first);
+      }
+      appdata.settings["illustPositions"] = m;
+      appdata.writeSettings();
+    } catch (_) {}
     _slideshowTimer?.cancel();
     windowManager.removeListener(this);
     super.dispose();
@@ -69,9 +95,12 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
     });
   }
 
-  late var controller = PageController(initialPage: widget.initialPage);
+  late PageController controller;
 
-  late int currentPage = widget.initialPage;
+  late int currentPage;
+
+  String get _shioriKey => 
+      "${widget.urls.length}:${widget.urls.isNotEmpty ? widget.urls.first : ''}";
 
   var menuController = FlyoutController();
 

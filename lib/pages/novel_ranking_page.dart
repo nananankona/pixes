@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pixes/components/loading.dart';
 import 'package:pixes/components/novel.dart';
 import 'package:pixes/components/title_bar.dart';
+import 'package:pixes/components/batch_download.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/utils/translation.dart';
@@ -45,7 +46,13 @@ class _NovelRankingPageState extends State<NovelRankingPage> {
   Widget buildHeader() {
     return TitleBar(
       title: "Ranking".tl,
-      action: DropDownButton(
+      action: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BatchNovelDownloadButton(
+              request: () => Network().getNovelRanking(type, null)),
+          const SizedBox(width: 8),
+          DropDownButton(
             title: Text(types[type]!.tl),
             items: types.entries.map((e) => MenuFlyoutItem(
               text: Text(e.value.tl),
@@ -56,6 +63,8 @@ class _NovelRankingPageState extends State<NovelRankingPage> {
               },
             )).toList(),
           ),
+        ],
+      ),
     );
   }
 }

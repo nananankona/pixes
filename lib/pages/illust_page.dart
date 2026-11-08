@@ -1583,6 +1583,25 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
         ).fixWidth(96),
         Button(
           onPressed: () {
+            launchUrlString(
+                "https://www.pixiv.net/artworks/${widget.illust.id}",
+                mode: LaunchMode.externalApplication);
+          },
+          child: SizedBox(
+            height: 28,
+            child: Row(
+              children: [
+                const Icon(MdIcons.open_in_new, size: 18),
+                const SizedBox(
+                  width: 8,
+                ),
+                Text("App".tl)
+              ],
+            ),
+          ),
+        ).fixWidth(96),
+        Button(
+          onPressed: () {
             context.to(() => RelatedIllustsPage(widget.illust.id.toString()));
           },
           child: SizedBox(

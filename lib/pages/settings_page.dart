@@ -319,7 +319,7 @@ class _SettingsPageState extends State<SettingsPage> {
     [2, "Auto-save on bookmark"], [2, "Auto-bookmark on save"],
     [1, "Auto advance to next artwork"],
     [2, "Download Path"], [2, "Subpath"], [2, "Max parallels"],
-    [2, "Folder organization"], [2, "Auto download on view"],
+    [2, "Folder organization"], [2, "Novel folder organization"], [2, "Auto download on view"],
     [2, "Cache limit (MB)"], [2, "Clear image cache"],
     [3, "Theme"], [3, "Accent color"], [3, "Background image"],
     [3, "Background opacity"], [3, "Background color"],
@@ -781,6 +781,36 @@ class _SettingsPageState extends State<SettingsPage> {
                           onPressed: () {
                             setState(() {
                               appdata.settings["folderMode"] = entry.$1;
+                            });
+                            appdata.writeSettings();
+                          }),
+                  ])),
+          buildItem(
+              title: "Novel folder organization".tl,
+              subtitle: switch (
+                  appdata.settings["novelFolderMode"] as int? ?? 0) {
+                1 => "By author".tl,
+                2 => "By series".tl,
+                _ => "Flat".tl,
+              },
+              action: DropDownButton(
+                  title: Text(switch (
+                      appdata.settings["novelFolderMode"] as int? ?? 0) {
+                    1 => "By author".tl,
+                    2 => "By series".tl,
+                    _ => "Flat".tl,
+                  }),
+                  items: [
+                    for (final entry in [
+                      (0, "Flat"),
+                      (1, "By author"),
+                      (2, "By series"),
+                    ])
+                      MenuFlyoutItem(
+                          text: Text(entry.$2.tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["novelFolderMode"] = entry.$1;
                             });
                             appdata.writeSettings();
                           }),

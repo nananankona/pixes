@@ -83,6 +83,7 @@ class _Appdata {
     "slideshowInterval": 3,
     "slideshowLoop": false,
     "folderMode": 0,
+    "novelFolderMode": 0,
     "readerDim": 0.0,
     "themeBackgroundHistory": <String>[],
     "recentColors": <String>[],
@@ -93,6 +94,7 @@ class _Appdata {
     "saveAutoFavorite": false,
     "syncRealtime": true,
     "novelPositions": <String, int>{},
+    "illustPositions": <String, int>{},
     "yumePairs": <String, String>{},
     "novelBreakLength": 0,
   };

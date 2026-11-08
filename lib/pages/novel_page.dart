@@ -11,6 +11,7 @@ import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/foundation/image_provider.dart';
 import 'package:pixes/network/network.dart';
+import 'package:pixes/network/download.dart';
 import 'package:pixes/pages/comments_page.dart';
 import 'package:pixes/pages/search_page.dart';import 'package:pixes/pages/novel_reading_page.dart';
 import 'package:pixes/pages/search_page.dart';
@@ -492,18 +493,78 @@ class _NovelPageState extends State<NovelPage> {
             ),
           ),
           const SizedBox(height: 12),
-          Button(
-              child: Row(
-                children: [
-                  const Icon(MdIcons.bookmark_outline, size: 18),
-                  const SizedBox(width: 12),
-                  Text("Related".tl)
-                ],
-              ).fixWidth(64).fixHeight(32),
-              onPressed: () {
-                context
-                    .to(() => _RelatedNovelsPage(widget.novel.id.toString()));
-              }),
+          Row(
+            children: [
+              Expanded(
+                child: Button(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(MdIcons.bookmark_outline, size: 18),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text("Related".tl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ).fixHeight(32),
+                    onPressed: () {
+                      context.to(() => _RelatedNovelsPage(widget.novel.id.toString()));
+                    }),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Button(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(MdIcons.download_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text("Save".tl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ).fixHeight(32),
+                    onPressed: () async {
+                      context.showToast(message: "Saving...".tl);
+                      try {
+                        final res = await Network().getNovelContent(widget.novel.id.toString());
+                        if (res.error || !mounted) return;
+                        final ok = await saveDownloadedNovel(widget.novel, res.data);
+                        if (mounted) {
+                          context.showToast(message: ok ? "Saved".tl : "Failed".tl);
+                        }
+                      } catch (_) {
+                        if (mounted) context.showToast(message: "Failed".tl);
+                      }
+                    }),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Button(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(MdIcons.open_in_new, size: 18),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text("App".tl,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ).fixHeight(32),
+                    onPressed: () {
+                      launchUrlString(
+                          "https://www.pixiv.net/novel/show.php?id=${widget.novel.id}",
+                          mode: LaunchMode.externalApplication);
+                    }),
+              ),
+            ],
+          ),
         ],
       ),
     ).paddingTop(12);

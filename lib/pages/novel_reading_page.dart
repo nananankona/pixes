@@ -31,6 +31,9 @@ class NovelReadingPage extends StatefulWidget {
 
 class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
   TitleBarAction? action;
+  TitleBarAction? autoScrollAction;
+  TitleBarAction? ttsAction;
+  TitleBarAction? downloadAction;
 
   bool isShowingSettings = false;
 
@@ -104,6 +107,7 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
     if (TtsService().playing) {
       await TtsService().stop();
       if (mounted) setState(() {});
+      _refreshReadingActions();
       return;
     }
     if (_ttsEngine == TtsEngine.off) {
@@ -121,6 +125,7 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       if (mounted) context.showToast(message: "$e");
     } finally {
       if (mounted) setState(() => _ttsBusy = false);
+      _refreshReadingActions();
     }
   }
 
@@ -131,6 +136,7 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       final speed =
           (appdata.settings["readingAutoScrollSpeed"] as num).toDouble();
       setState(() => _autoScrolling = true);
+      _refreshReadingActions();
       _scrollTimer =
           Timer.periodic(const Duration(milliseconds: 50), (_) {
         if (!_scrollController.hasClients) return;
@@ -151,8 +157,44 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
     _scrollTimer = null;
     if (mounted && _autoScrolling) {
       setState(() => _autoScrolling = false);
+      _refreshReadingActions();
     } else {
       _autoScrolling = false;
+    }
+  }
+
+  @override
+  void _refreshReadingActions() {
+    final ctl = StateController.findOrNull<TitleBarController>();
+    if (ctl == null) return;
+    for (final a in [autoScrollAction, ttsAction, downloadAction]) {
+      if (a != null) ctl.removeAction(a);
+    }
+    autoScrollAction = TitleBarAction(
+        _autoScrolling ? FluentIcons.pause : FluentIcons.play,
+        "Auto-scroll".tl,
+        _toggleAutoScroll);
+    ttsAction = TitleBarAction(
+        TtsService().playing ? FluentIcons.stop : FluentIcons.speakers,
+        "Read aloud".tl,
+        () {
+          if (!_ttsBusy) _toggleTts();
+        });
+    downloadAction = TitleBarAction(
+        MdIcons.download, "Download".tl, _downloadNovel);
+    ctl
+      ..addAction(autoScrollAction!)
+      ..addAction(ttsAction!)
+      ..addAction(downloadAction!);
+  }
+
+  Future<void> _downloadNovel() async {
+    final raw = translatedContent ?? data;
+    if (raw == null || raw.isEmpty) return;
+    context.showToast(message: "Saving...".tl);
+    final ok = await saveDownloadedNovel(widget.novel, raw);
+    if (mounted) {
+      context.showToast(message: ok ? "Saved".tl : "Failed".tl);
     }
   }
 
@@ -192,6 +234,7 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
     });
     Future.delayed(const Duration(milliseconds: 200), () {
       StateController.find<TitleBarController>().addAction(action!);
+      if (mounted) _refreshReadingActions();
     });
     super.initState();
   }
@@ -214,9 +257,13 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       }
     } catch (_) {}
     _scrollController.dispose();
-    Future.delayed(const Duration(milliseconds: 200), () {
-      StateController.find<TitleBarController>().removeAction(action!);
-    });
+    final ctl = StateController.findOrNull<TitleBarController>();
+    if (ctl != null) {
+      ctl.removeAction(action!);
+      for (final a in [autoScrollAction, ttsAction, downloadAction]) {
+        if (a != null) ctl.removeAction(a);
+      }
+    }
     super.dispose();
   }
 
@@ -227,7 +274,6 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _maybeResume());
     }
     var content = buildList(context).toList();
-    final ttsPlaying = TtsService().playing;
     return ScaffoldPage(
       padding: EdgeInsets.zero,
       content: Stack(
@@ -279,39 +325,15 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
               ),
             ),
           )),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: Button(
-              onPressed: _toggleAutoScroll,
-              child: Icon(_autoScrolling ? FluentIcons.pause : FluentIcons.play),
-            ),
-          ),
           if (widget.novel.seriesId != null)
             Positioned(
               right: 16,
-              bottom: 128,
+              bottom: 16,
               child: Button(
                 onPressed: _showSeriesToc,
                 child: const Icon(FluentIcons.list),
               ),
             ),
-          Positioned(
-            right: 16,
-            bottom: 72,
-            child: Button(
-              onPressed: _ttsBusy ? null : _toggleTts,
-              child: _ttsBusy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: ProgressRing(strokeWidth: 2),
-                    )
-                  : Icon(ttsPlaying
-                      ? FluentIcons.stop
-                      : FluentIcons.speakers),
-            ),
-          ),
         ],
       ),
     );
