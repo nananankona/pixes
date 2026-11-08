@@ -204,6 +204,13 @@ class DownloadingTask {
     var path = _generateFilePath(illust, 0, 'zip');
     final time = DateFormat("yyyy-MM-dd'T'HH:mm:ss'+00:00'").format(DateTime.now());
     final hash = md5.convert(utf8.encode(time + Network.hashSalt)).toString();
+    var file = File(path);
+    var resumeFrom = 0;
+    if (file.existsSync()) {
+      resumeFrom = file.lengthSync();
+    } else {
+      file.createSync(recursive: true);
+    }
     var res = await dio.get<ResponseBody>(zipUrl, options: Options(
       responseType: ResponseType.stream,
       headers: {
@@ -212,11 +219,11 @@ class DownloadingTask {
         "x-client-time": time,
         "x-client-hash": hash,
         "accept-enconding": "gzip",
+        if (resumeFrom > 0) "Range": "bytes=$resumeFrom-",
       },
     ));
-    var file = File(path);
-    if (!file.existsSync()) {
-      file.createSync(recursive: true);
+    if (resumeFrom > 0 && res.statusCode != 206) {
+      await file.writeAsBytes([], mode: FileMode.write);
     }
     await for (var data in res.data!.stream) {
       await file.writeAsBytes(data, mode: FileMode.append);

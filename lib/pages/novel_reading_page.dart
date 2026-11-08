@@ -67,19 +67,30 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
     _speakParagraphs = [];
     _speakWidgetIndex = [];
     var wi = 4; // title, spacing, divider, spacing
+    final breakLen = _novelBreakLen;
     for (final line in raw.split('\n')) {
       if (line.trim().isEmpty) continue;
       if (line.trimLeft().startsWith('[uploadedimage:')) {
         wi++;
         continue;
       }
-      final cleaned = cleanTtsLine(line);
-      if (cleaned == null) {
+      if (line.trimLeft().startsWith('[')) {
+        // Markup lines (chapter/newpage/jump): single unit.
+        final cleaned = cleanTtsLine(line);
+        if (cleaned == null) continue;
+        _speakParagraphs.add(cleaned);
+        _speakWidgetIndex.add(wi);
+        wi++;
         continue;
       }
-      _speakParagraphs.add(cleaned);
-      _speakWidgetIndex.add(wi);
-      wi++;
+      for (final chunk in breakNovelLine(applyYumePairs(line), breakLen)) {
+        if (chunk.trim().isEmpty) continue;
+        final cleaned = cleanTtsLine(chunk);
+        if (cleaned == null) continue;
+        _speakParagraphs.add(cleaned);
+        _speakWidgetIndex.add(wi);
+        wi++;
+      }
     }
   }
 
@@ -452,10 +463,14 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
       } else if (content.startsWith('[newpage')) {
         continue;
       } else {
-        yield Text(applyYumePairs(content),
-                style:
-                    TextStyle(fontSize: 16.0 + fontSizeAdd, height: fontHeight))
-            .paddingBottom(appdata.settings["readingParagraphSpacing"]);
+        for (final chunk
+            in breakNovelLine(applyYumePairs(content), _novelBreakLen)) {
+          if (chunk.trim().isEmpty) continue;
+          yield Text(chunk,
+                  style: TextStyle(
+                      fontSize: 16.0 + fontSizeAdd, height: fontHeight))
+              .paddingBottom(appdata.settings["readingParagraphSpacing"]);
+        }
       }
     }
   }
@@ -471,6 +486,35 @@ String applyYumePairs(String text) {
     if (from.isNotEmpty) out = out.replaceAll(from, v.toString());
   });
   return out;
+}
+
+int get _novelBreakLen =>
+    ((appdata.settings["novelBreakLength"] as num?)?.toInt() ?? 0);
+
+/// Splits a long line into chunks at sentence boundaries.
+/// Returns a single chunk when disabled or short enough.
+List<String> breakNovelLine(String line, int maxLen) {
+  if (maxLen <= 0 || line.length <= maxLen) return [line];
+  final out = <String>[];
+  final buf = StringBuffer();
+  void flush() {
+    if (buf.isNotEmpty) {
+      out.add(buf.toString());
+      buf.clear();
+    }
+  }
+
+  for (final r in line.runes) {
+    buf.writeCharCode(r);
+    final ch = String.fromCharCode(r);
+    if (buf.length >= maxLen) {
+      flush();
+    } else if ('。！？'.contains(ch) && buf.length >= maxLen ~/ 3) {
+      flush();
+    }
+  }
+  flush();
+  return out.isEmpty ? [line] : out;
 }
 
 /// Cleans a raw novel line for TTS. Returns null to skip the line.
@@ -683,6 +727,28 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
                 max: 0.8,
               ),
               trailing: Text((((appdata.settings["readerDim"] as num?)?.toDouble() ?? 0.0) * 100).toStringAsFixed(0) + "%"),
+            ),
+          ).paddingHorizontal(8).paddingBottom(8),
+          Card(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              title: Text("Line break length".tl),
+              subtitle: Slider(
+                value: ((appdata.settings["novelBreakLength"] as num?)?.toDouble() ?? 0.0),
+                onChanged: (value) {
+                  setState(() {
+                    appdata.settings["novelBreakLength"] = value.toInt();
+                  });
+                  appdata.writeSettings();
+                  widget.callback();
+                },
+                min: 0.0,
+                max: 1200.0,
+                divisions: 6,
+              ),
+              trailing: Text((((appdata.settings["novelBreakLength"] as num?)?.toInt() ?? 0) == 0)
+                  ? "Off".tl
+                  : "${((appdata.settings["novelBreakLength"] as num?)?.toInt() ?? 0)}"),
             ),
           ).paddingHorizontal(8).paddingBottom(8),
           Card(

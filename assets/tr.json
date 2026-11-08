@@ -320,7 +320,8 @@
         "Download when bookmarking": "收藏时下载",
         "Auto-bookmark on save": "保存时自动收藏",
         "Bookmark when download completes": "下载完成后收藏",
-        "Series": "系列"
+        "Series": "系列",
+        "Line break length": "换行字数"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -643,7 +644,8 @@
         "Download when bookmarking": "收藏時下載",
         "Auto-bookmark on save": "儲存時自動收藏",
         "Bookmark when download completes": "下載完成後收藏",
-        "Series": "系列"
+        "Series": "系列",
+        "Line break length": "換行字數"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1316,7 +1318,8 @@
         "Download when bookmarking": "收藏時にダウンロード",
         "Auto-bookmark on save": "保存時に自動收藏",
         "Bookmark when download completes": "ダウンロード完了時に收藏",
-        "Series": "シリーズ"
+        "Series": "シリーズ",
+        "Line break length": "改行文字数"
     },
     "es_ES": {
         "Search": "Buscar",

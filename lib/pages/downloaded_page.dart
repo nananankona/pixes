@@ -29,6 +29,7 @@ class DownloadedPage extends StatefulWidget {
 
 class _DownloadedPageState extends State<DownloadedPage> {
   var illusts = <DownloadedIllust>[];
+  var illustTags = <int, List<String>>{};
   var novels = <DownloadedNovel>[];
   var flyoutControllers = <FlyoutController>[];
   var novelTexts = <String, String>{};
@@ -40,6 +41,25 @@ class _DownloadedPageState extends State<DownloadedPage> {
 
   void loadData() {
     illusts = DownloadManager().listAll();
+    illustTags = {};
+    for (final it in illusts) {
+      try {
+        final paths = DownloadManager().getImagePaths(it.illustId);
+        if (paths.isEmpty) continue;
+        final dir = File(paths.first).parent.path;
+        final infoFile = File('$dir/info_${it.illustId}.json');
+        if (!infoFile.existsSync()) continue;
+        final info =
+            jsonDecode(infoFile.readAsStringSync()) as Map<String, dynamic>;
+        final tags = (info['tags'] as List? ?? [])
+            .map((t) => t is Map
+                ? '${t['name'] ?? ''} ${t['translated'] ?? ''}'.toLowerCase()
+                : '')
+            .where((t) => t.trim().isNotEmpty)
+            .toList();
+        if (tags.isNotEmpty) illustTags[it.illustId] = tags;
+      } catch (_) {}
+    }
     novels = DownloadManager().listNovels();
     novelTexts = {};
     for (final n in novels) {
@@ -65,7 +85,8 @@ class _DownloadedPageState extends State<DownloadedPage> {
         .where((e) =>
             e.title.toLowerCase().contains(q) ||
             e.author.toLowerCase().contains(q) ||
-            e.illustId.toString().contains(q))
+            e.illustId.toString().contains(q) ||
+            (illustTags[e.illustId]?.any((t) => t.contains(q)) ?? false))
         .toList();
   }
 

@@ -93,6 +93,7 @@ class _Appdata {
     "saveAutoFavorite": false,
     "novelPositions": <String, int>{},
     "yumePairs": <String, String>{},
+    "novelBreakLength": 0,
   };
 
   bool lock = false;
