@@ -256,7 +256,14 @@
         "Select a TTS engine first": "请先选择朗读引擎",
         "Speaker": "说话者",
         "WebSocket URL": "WebSocket 地址",
-        "Failed to open file": "打开文件失败"
+        "Failed to open file": "打开文件失败",
+        "Slideshow interval (seconds)": "轮播间隔（秒）",
+        "Loop slideshow": "循环播放",
+        "Restart from the first page at the end": "播到末尾时从头开始",
+        "Folder organization": "文件夹整理",
+        "By author": "按作者",
+        "By author and artwork": "按作者和作品",
+        "Custom pattern": "自定义规则"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -515,7 +522,14 @@
         "Select a TTS engine first": "請先選擇朗讀引擎",
         "Speaker": "說話者",
         "WebSocket URL": "WebSocket 位址",
-        "Failed to open file": "開啟檔案失敗"
+        "Failed to open file": "開啟檔案失敗",
+        "Slideshow interval (seconds)": "輪播間隔（秒）",
+        "Loop slideshow": "循環播放",
+        "Restart from the first page at the end": "播到末尾時從頭開始",
+        "Folder organization": "資料夾整理",
+        "By author": "按作者",
+        "By author and artwork": "按作者和作品",
+        "Custom pattern": "自訂規則"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -774,7 +788,14 @@
         "Select a TTS engine first": "먼저 TTS 엔진을 선택하세요",
         "Speaker": "화자",
         "WebSocket URL": "WebSocket 주소",
-        "Failed to open file": "파일 열기 실패"
+        "Failed to open file": "파일 열기 실패",
+        "Slideshow interval (seconds)": "슬라이드쇼 간격(초)",
+        "Loop slideshow": "반복 재생",
+        "Restart from the first page at the end": "끝에서 처음으로",
+        "Folder organization": "폴더 정리",
+        "By author": "작가별",
+        "By author and artwork": "작가 및 작품별",
+        "Custom pattern": "사용자 패턴"
     },
     "ja_JP": {
         "Login with saved credentials": "保存された認証情報でログイン",
@@ -1084,6 +1105,13 @@
         "Select a TTS engine first": "先に読み上げエンジンを選択してください",
         "Speaker": "話者",
         "WebSocket URL": "WebSocketのURL",
-        "Failed to open file": "ファイルを開けませんでした"
+        "Failed to open file": "ファイルを開けませんでした",
+        "Slideshow interval (seconds)": "スライドショー間隔（秒）",
+        "Loop slideshow": "ループ再生",
+        "Restart from the first page at the end": "最後まで行ったら最初から",
+        "Folder organization": "フォルダ分け",
+        "By author": "作者別",
+        "By author and artwork": "作者・作品別",
+        "Custom pattern": "カスタム"
     }
 }

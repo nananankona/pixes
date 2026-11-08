@@ -283,15 +283,16 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
-          buildItem(
-            title: "Subpath".tl,
-            subtitle: appdata.settings["downloadSubPath"],
-            action: Button(
-                child: Text("Manage".tl).fixWidth(64),
-                onPressed: () {
-                  context.to(() => const _SetDownloadSubPathPage());
-                }),
-          ),
+          if ((appdata.settings["folderMode"] as int? ?? 0) == 3)
+            buildItem(
+              title: "Subpath".tl,
+              subtitle: appdata.settings["downloadSubPath"],
+              action: Button(
+                  child: Text("Manage".tl).fixWidth(64),
+                  onPressed: () {
+                    context.to(() => const _SetDownloadSubPathPage());
+                  }),
+            ),
           buildItem(
             title: "Max parallels".tl,
             action: SizedBox(
@@ -309,6 +310,39 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          buildItem(
+              title: "Folder organization".tl,
+              subtitle: switch (
+                  appdata.settings["folderMode"] as int? ?? 0) {
+                1 => "By author".tl,
+                2 => "By author and artwork".tl,
+                3 => "Custom pattern".tl,
+                _ => "Off".tl,
+              },
+              action: DropDownButton(
+                  title: Text(switch (
+                      appdata.settings["folderMode"] as int? ?? 0) {
+                    1 => "By author".tl,
+                    2 => "By author and artwork".tl,
+                    3 => "Custom pattern".tl,
+                    _ => "Off".tl,
+                  }),
+                  items: [
+                    for (final entry in [
+                      (0, "Off"),
+                      (1, "By author"),
+                      (2, "By author and artwork"),
+                      (3, "Custom pattern"),
+                    ])
+                      MenuFlyoutItem(
+                          text: Text(entry.$2.tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["folderMode"] = entry.$1;
+                            });
+                            appdata.writeSettings();
+                          }),
+                  ])),
           buildItem(
               title: "Auto download on view".tl,
               action: DropDownButton(
@@ -514,6 +548,39 @@ class _SettingsPageState extends State<SettingsPage> {
                             appdata.writeData();
                           }),
                   ])),
+          buildItem(
+              title: "Slideshow interval (seconds)".tl,
+              action: SizedBox(
+                width: 96,
+                height: 32,
+                child: NumberBox<int>(
+                  value:
+                      (appdata.settings["slideshowInterval"] as num?)?.toInt() ??
+                          3,
+                  min: 1,
+                  max: 60,
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      appdata.settings["slideshowInterval"] = value;
+                    });
+                    appdata.writeSettings();
+                  },
+                  clearButton: false,
+                  mode: SpinButtonPlacementMode.none,
+                ),
+              )),
+          buildItem(
+              title: "Loop slideshow".tl,
+              subtitle: "Restart from the first page at the end".tl,
+              action: ToggleSwitch(
+                  checked: appdata.settings['slideshowLoop'] == true,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings['slideshowLoop'] = value;
+                    });
+                    appdata.writeData();
+                  })),
           buildItem(
               title: "Emphasize artworks from following artists".tl,
               subtitle: "The border of the artworks will be darker".tl,

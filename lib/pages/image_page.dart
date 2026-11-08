@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -48,6 +49,7 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
 
   @override
   void dispose() {
+    _slideshowTimer?.cancel();
     windowManager.removeListener(this);
     super.dispose();
   }
@@ -71,6 +73,45 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
   late int currentPage = widget.initialPage;
 
   var menuController = FlyoutController();
+
+  Timer? _slideshowTimer;
+
+  bool get _slideshowPlaying => _slideshowTimer != null;
+
+  void _toggleSlideshow() {
+    if (_slideshowPlaying) {
+      _stopSlideshow();
+      return;
+    }
+    final seconds =
+        (appdata.settings['slideshowInterval'] as num?)?.toInt() ?? 3;
+    setState(() {
+      _slideshowTimer =
+          Timer.periodic(Duration(seconds: seconds.clamp(1, 60)), (_) {
+        if (!mounted) {
+          _stopSlideshow();
+          return;
+        }
+        if (currentPage < widget.urls.length - 1) {
+          controller.nextPage(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        } else if (appdata.settings['slideshowLoop'] == true &&
+            widget.urls.isNotEmpty) {
+          controller.jumpToPage(0);
+        } else {
+          _stopSlideshow();
+        }
+      });
+    });
+  }
+
+  void _stopSlideshow() {
+    _slideshowTimer?.cancel();
+    _slideshowTimer = null;
+    if (mounted) setState(() {});
+  }
 
   Future<File?> getFile() async {
     var image = widget.urls[currentPage];
@@ -247,6 +288,11 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
                             child: SizedBox.expand(),
                           ),
                         ),
+                        IconButton(
+                            icon: Icon(_slideshowPlaying
+                                ? FluentIcons.pause
+                                : FluentIcons.play),
+                            onPressed: _toggleSlideshow),
                         buildActions(),
                         if (App.isMacOS)
                           const SizedBox(width: 16),

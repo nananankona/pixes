@@ -70,6 +70,9 @@ class _Appdata {
     "capcutV2Speaker": "labebe",
     "capcutEmail": "",
     "capcutPassword": "",
+    "slideshowInterval": 3,
+    "slideshowLoop": false,
+    "folderMode": 0,
   };
 
   bool lock = false;
@@ -130,6 +133,11 @@ class _Appdata {
       }
     }
     settings["downloadPath"] ??= await _defaultDownloadPath;
+    // Migrate users with a customized subpath pattern to custom folder mode.
+    if (settings["downloadSubPath"] != r"/${id}-p${index}.${ext}" &&
+        (settings["folderMode"] as int? ?? 0) == 0) {
+      settings["folderMode"] = 3;
+    }
     if (App.isMacOS) {
       await _ensureMacOSDownloadPathPermission();
     }

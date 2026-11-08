@@ -13,16 +13,21 @@ import '../network/app_dio.dart';
 import 'dart:ui' as ui;
 
 class UgoiraWidget extends StatefulWidget {
-  const UgoiraWidget({super.key, required this.id, required this.previewImage,
-    required this.width, required this.height});
+  const UgoiraWidget({super.key, required this.id, this.previewImage,
+    required this.width, required this.height, this.localZipPath, this.localFrames});
 
   final String id;
 
-  final ImageProvider previewImage;
-
+  final ImageProvider? previewImage;
   final double width;
 
   final double height;
+
+  /// If set, plays a downloaded zip instead of fetching from network.
+  final String? localZipPath;
+
+  /// Frame list for local playback: [{'file': name, 'delay': ms}].
+  final List<Map<String, dynamic>>? localFrames;
 
   @override
   State<UgoiraWidget> createState() => _UgoiraWidgetState();
@@ -53,15 +58,18 @@ class _UgoiraWidgetState extends State<UgoiraWidget> {
   }
 
   Widget buildPreview() {
+    final preview = widget.previewImage;
     return Stack(
       children: [
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: Image(
-              image: widget.previewImage,
-              fit: BoxFit.cover,
-            ),
+            child: preview == null
+                ? Container(color: FluentTheme.of(context).inactiveBackgroundColor)
+                : Image(
+                    image: preview,
+                    fit: BoxFit.cover,
+                  ),
           ),
         ),
         if(_error)
@@ -93,6 +101,26 @@ class _UgoiraWidgetState extends State<UgoiraWidget> {
   }
 
   void load() async {
+    if (widget.localZipPath != null && widget.localFrames != null) {
+      try {
+        _metadata = _UgoiraMetadata(
+          url: widget.localZipPath!,
+          frames: widget.localFrames!
+              .map((e) => _UgoiraFrame(
+                    delay: (e['delay'] as num).toInt(),
+                    fileName: e['file'].toString(),
+                  ))
+              .toList(),
+        );
+        await extract(widget.localZipPath!);
+      } catch (_) {
+        setState(() {
+          _error = true;
+          _loading = false;
+        });
+      }
+      return;
+    }
     setState(() {
       _loading = true;
     });

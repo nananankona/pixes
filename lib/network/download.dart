@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:intl/intl.dart';
 import 'package:pixes/appdata.dart';
@@ -40,7 +42,7 @@ void maybeAutoDownloadIllust(Illust illust) {
   final mode = appdata.settings["autoDownload"] as int? ?? 0;
   if (mode != 1 && mode != 3) return;
   if (appdata.settings["privateMode"] == true) return;
-  if (illust.downloaded || illust.downloading || illust.isUgoira) return;
+  if (illust.downloaded || illust.downloading) return;
   if (checkIllusts([illust]).isEmpty) return;
   final manager = DownloadManager();
   // Cap the auto queue so mass browsing doesn't flood downloads.
@@ -111,6 +113,11 @@ class DownloadingTask {
 
   void _download() async{
     try{
+      if (illust.isUgoira) {
+        await _downloadUgoira();
+        onCompleted?.call(this);
+        return;
+      }
       while(_downloadingIndex < illust.images.length) {
         if(_stop) return;
         var url = illust.images[_downloadingIndex].original;
@@ -153,6 +160,68 @@ class DownloadingTask {
 
   int _retryCount = 0;
 
+  /// Ugoira frames live in a zip archive, not in illust.images.
+  /// Downloads the zip, a cover image, and records frame metadata
+  /// for local playback and change detection.
+  List<Map<String, dynamic>> ugoiraFrames = [];
+
+  Future<void> _downloadUgoira() async {
+    var metaRes =
+        await Network().apiGet('/v1/ugoira/metadata?illust_id=${illust.id}');
+    if (metaRes.error) {
+      throw metaRes.errorMessage ?? "Failed to get ugoira metadata";
+    }
+    final meta = metaRes.data['ugoira_metadata'] as Map<String, dynamic>;
+    final zipUrl = (meta['zip_urls'] as Map)['medium'] as String;
+    ugoiraFrames = ((meta['frames'] as List).map((e) => {
+          'file': (e as Map)['file'],
+          'delay': e['delay'],
+        })).toList();
+    var path = _generateFilePath(illust, 0, 'zip');
+    final time = DateFormat("yyyy-MM-dd'T'HH:mm:ss'+00:00'").format(DateTime.now());
+    final hash = md5.convert(utf8.encode(time + Network.hashSalt)).toString();
+    var res = await dio.get<ResponseBody>(zipUrl, options: Options(
+      responseType: ResponseType.stream,
+      headers: {
+        "referer": "https://app-api.pixiv.net/",
+        "user-agent": "PixivAndroidApp/5.0.234 (Android 14; Pixes)",
+        "x-client-time": time,
+        "x-client-hash": hash,
+        "accept-enconding": "gzip",
+      },
+    ));
+    var file = File(path);
+    if (!file.existsSync()) {
+      file.createSync(recursive: true);
+    }
+    await for (var data in res.data!.stream) {
+      await file.writeAsBytes(data, mode: FileMode.append);
+      receiveBytesCallback?.call(data.length);
+    }
+    imagePaths.add(path);
+    _downloadingIndex = illust.images.length;
+    _retryCount = 0;
+    await _saveUgoiraCover(path);
+  }
+
+  /// Saves the zip's first frame as a cover image for lists.
+  Future<void> _saveUgoiraCover(String zipPath) async {
+    try {
+      final bytes = await File(zipPath).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      for (final f in archive) {
+        if (f.isFile && f.content != null) {
+          final dir = File(zipPath).parent.path;
+          await File('$dir/cover_${illust.id}.jpg')
+              .writeAsBytes(Uint8List.fromList(f.content as List<int>));
+          return;
+        }
+      }
+    } catch (e) {
+      Log.error("Download", "Failed to save ugoira cover: $e");
+    }
+  }
+
   void _handleError(Object e) async{
     _retryCount++;
     if(_retryCount > 3) {
@@ -165,29 +234,57 @@ class DownloadingTask {
     _download();
   }
 
+  static String _sanitizeComponent(String s) {
+    var cleaned = s.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    if (cleaned.isEmpty) cleaned = '_';
+    if (cleaned.length > 100) cleaned = cleaned.substring(0, 100);
+    return cleaned;
+  }
+
+  static const _defaultSubPath = r"/${id}-p${index}.${ext}";
+
   static String _generateFilePath(Illust illust, int index, String ext) {
     final String downloadPath = appdata.settings["downloadPath"];
-    String subPathPatten = appdata.settings["downloadSubPath"];
-    subPathPatten = subPathPatten.replaceAll(r"${id}", illust.id.toString());
-    subPathPatten = subPathPatten.replaceAll(r"${title}", illust.title);
-    subPathPatten = subPathPatten.replaceAll(r"${author}", illust.author.name);
-    subPathPatten = subPathPatten.replaceAll(r"${index}", index.toString());
-    subPathPatten = subPathPatten.replaceAll(r"${page}",
-        illust.images.length == 1 ? "" : "-p$index");
-    subPathPatten = subPathPatten.replaceAll(r"${ext}", ext);
-    subPathPatten = subPathPatten.replaceAll(r"${AI}", illust.isAi ? "AI" : "");
-    List<String> extractTags(String input) {
-      final regex = RegExp(r'\$\{tag\((.*?)\)\}');
-      final matches = regex.allMatches(input);
-      return matches.map((match) => match.group(1)!).toList();
+    var mode = appdata.settings["folderMode"] as int? ?? 0;
+    // Backward compat: users with a customized pattern keep using it.
+    if (mode == 0 &&
+        (appdata.settings["downloadSubPath"] as String? ??
+                _defaultSubPath) !=
+            _defaultSubPath) {
+      mode = 3;
     }
-    var tags = extractTags(subPathPatten);
-    for(var tag in tags) {
-      if (illust.tags.where((e) => e.name == tag || e.translatedName == tag).isNotEmpty) {
-        subPathPatten = subPathPatten.replaceAll("\${tag($tag)}", tag);
+    if (mode == 3) {
+      var subPathPatten = appdata.settings["downloadSubPath"];
+      subPathPatten = subPathPatten.replaceAll(r"${id}", illust.id.toString());
+      subPathPatten = subPathPatten.replaceAll(r"${title}", illust.title);
+      subPathPatten = subPathPatten.replaceAll(r"${author}", illust.author.name);
+      subPathPatten = subPathPatten.replaceAll(r"${index}", index.toString());
+      subPathPatten = subPathPatten.replaceAll(r"${page}",
+          illust.images.length == 1 ? "" : "-p$index");
+      subPathPatten = subPathPatten.replaceAll(r"${ext}", ext);
+      subPathPatten = subPathPatten.replaceAll(r"${AI}", illust.isAi ? "AI" : "");
+      List<String> extractTags(String input) {
+        final regex = RegExp(r'\$\{tag\((.*?)\)\}');
+        final matches = regex.allMatches(input);
+        return matches.map((match) => match.group(1)!).toList();
       }
+      var tags = extractTags(subPathPatten);
+      for (var tag in tags) {
+        if (illust.tags.where((e) => e.name == tag || e.translatedName == tag).isNotEmpty) {
+          subPathPatten = subPathPatten.replaceAll("\${tag($tag)}", tag);
+        }
+      }
+      return _cleanFilePath("$downloadPath$subPathPatten");
     }
-    return _cleanFilePath("$downloadPath$subPathPatten");
+    String rel;
+    if (mode == 1) {
+      rel = "/${_sanitizeComponent(illust.author.name)}/${illust.id}-p$index.$ext";
+    } else if (mode == 2) {
+      rel = "/${_sanitizeComponent(illust.author.name)}/${_sanitizeComponent(illust.title)}_${illust.id}/$index.$ext";
+    } else {
+      rel = "/${illust.id}-p$index.$ext";
+    }
+    return _cleanFilePath("$downloadPath$rel");
   }
 
   static String _cleanFilePath(String filePath) {
@@ -311,10 +408,79 @@ class DownloadManager {
     if(illust.downloaded || illust.downloading) return;
     var task = DownloadingTask(illust, receiveBytesCallback: receiveBytes, onCompleted: (task) {
       saveInfo(illust, task.imagePaths);
+      saveArtworkMetadata(illust, task.imagePaths,
+          task.ugoiraFrames.isEmpty ? null : task.ugoiraFrames);
       tasks.remove(task);
     });
     tasks.add(task);
     run();
+  }
+
+  /// Saves a snapshot of the post (info.json) and first-page comments
+  /// (comments.json) next to the downloaded files. Used for change
+  /// detection (edited posts / deleted comments) when reopening.
+  Future<void> saveArtworkMetadata(Illust illust, List<String> imagePaths,
+      [List<Map<String, dynamic>>? ugoiraFrames]) async {
+    try {
+      if (imagePaths.isEmpty) return;
+      final dir = File(imagePaths.first).parent;
+      if (!await dir.exists()) return;
+      final info = {
+        'id': illust.id,
+        'title': illust.title,
+        'caption': illust.caption,
+        'author': {
+          'id': illust.author.id,
+          'name': illust.author.name,
+          'account': illust.author.account,
+        },
+        'tags': illust.tags
+            .map((t) => {'name': t.name, 'translated': t.translatedName})
+            .toList(),
+        'pageCount': illust.pageCount,
+        'width': illust.width,
+        'height': illust.height,
+        'totalViews': illust.totalView,
+        'totalBookmarks': illust.totalBookmarks,
+        'isAi': illust.isAi,
+        'isUgoira': illust.isUgoira,
+        'isR18': illust.isR18,
+        'isR18G': illust.isR18G,
+        'createDate': illust.createDate.toIso8601String(),
+        'downloadedAt': DateTime.now().toIso8601String(),
+        'files': imagePaths.map((p) => p.split(RegExp(r'[/\\]')).last).toList(),
+        if (ugoiraFrames != null) 'ugoiraFrames': ugoiraFrames,
+      };
+      await File('${dir.path}/info_${illust.id}.json')
+          .writeAsString(jsonEncode(info));
+      try {
+        final commentsRes =
+            await Network().getComments(illust.id.toString());
+        if (!commentsRes.error) {
+          final comments = {
+            'illustId': illust.id,
+            'fetchedAt': DateTime.now().toIso8601String(),
+            // First page only; used to detect deleted comments later.
+            'hasMore': true,
+            'comments': commentsRes.data
+                .map((c) => {
+                      'id': c.id,
+                      'uid': c.uid,
+                      'name': c.name,
+                      'comment': c.comment,
+                      'date': c.date.toIso8601String(),
+                    })
+                .toList(),
+          };
+          await File('${dir.path}/comments_${illust.id}.json')
+              .writeAsString(jsonEncode(comments));
+        }
+      } catch (e) {
+        Log.error("Download", "Failed to save comments snapshot: $e");
+      }
+    } catch (e) {
+      Log.error("Download", "Failed to save artwork metadata: $e");
+    }
   }
 
   void receiveBytes(int bytes) {
@@ -364,8 +530,21 @@ class DownloadManager {
       select * from images
       where illust_id = ?;
     ''', [illust.illustId]);
+    String? dir;
     for(var image in images) {
-      File(image["path"] as String).deleteIgnoreError();
+      final path = image["path"] as String;
+      dir ??= File(path).parent.path;
+      File(path).deleteIgnoreError();
+    }
+    if (dir != null) {
+      // Sidecar files written at download time.
+      for (final name in [
+        'info_${illust.illustId}.json',
+        'comments_${illust.illustId}.json',
+        'cover_${illust.illustId}.jpg',
+      ]) {
+        File('$dir/$name').deleteIgnoreError();
+      }
     }
     _db.execute('''
       delete from images

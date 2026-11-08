@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
@@ -8,6 +9,7 @@ import 'package:pixes/components/animated_image.dart';
 import 'package:pixes/components/grid.dart';
 import 'package:pixes/components/md.dart';
 import 'package:pixes/components/title_bar.dart';
+import 'package:pixes/components/ugoira.dart';
 import 'package:pixes/foundation/app.dart';
 import 'package:pixes/network/download.dart';
 import 'package:pixes/pages/illust_page.dart';
@@ -71,15 +73,45 @@ class _DownloadedPageState extends State<DownloadedPage> {
         maxCrossAxisExtent: 742,
         builder: (context, index) {
           var image = DownloadManager().getImage(illusts[index].illustId, 0);
+          final isUgoiraZip =
+              image != null && image.path.toLowerCase().endsWith('.zip');
+          Widget? thumbnail;
+          if (isUgoiraZip) {
+            final cover = File(
+                '${File(image!.path).parent.path}/cover_${illusts[index].illustId}.jpg');
+            thumbnail = cover.existsSync()
+                ? AnimatedImage(
+                    image: FileImage(cover),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    filterQuality: FilterQuality.medium,
+                  )
+                : const Icon(MdIcons.play_circle_outline, size: 36);
+          } else if (image != null) {
+            thumbnail = AnimatedImage(
+              image: FileImage(image),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              filterQuality: FilterQuality.medium,
+            );
+          }
           return Card(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                App.rootNavigatorKey.currentContext?.to(() =>
-                    _DownloadedIllustViewPage(DownloadManager()
+                if (isUgoiraZip) {
+                    App.rootNavigatorKey.currentContext?.to(() =>
+                        _DownloadedUgoiraViewPage(
+                            illusts[index].illustId, image!.path));
+                } else {
+                    App.rootNavigatorKey.currentContext?.to(() =>
+                        _DownloadedIllustViewPage(DownloadManager()
                         .getImagePaths(illusts[index].illustId)));
+                }
               },
               child: Row(
                 children: [
@@ -90,15 +122,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                         borderRadius: BorderRadius.circular(4),
                         color: ColorScheme.of(context).secondaryContainer),
                     clipBehavior: Clip.antiAlias,
-                    child: image == null
-                        ? null
-                        : AnimatedImage(
-                            image: FileImage(image),
-                            fit: BoxFit.cover,
-                            width: 96,
-                            height: double.infinity,
-                            filterQuality: FilterQuality.medium,
-                          ),
+                    child: thumbnail,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -425,6 +449,132 @@ class _DownloadedIllustViewPageState extends State<_DownloadedIllustViewPage>
                 size: 20,
               ),
               onPressed: showMenu),
+    );
+  }
+}
+
+class _DownloadedUgoiraViewPage extends StatefulWidget {
+  const _DownloadedUgoiraViewPage(this.illustId, this.zipPath);
+
+  final int illustId;
+  final String zipPath;
+
+  @override
+  State<_DownloadedUgoiraViewPage> createState() =>
+      __DownloadedUgoiraViewPageState();
+}
+
+class __DownloadedUgoiraViewPageState
+    extends State<_DownloadedUgoiraViewPage> with WindowListener {
+  int windowButtonKey = 0;
+
+  List<Map<String, dynamic>>? frames;
+  String? error;
+
+  @override
+  void initState() {
+    windowManager.addListener(this);
+    _loadFrames();
+    super.initState();
+  }
+
+  Future<void> _loadFrames() async {
+    try {
+      final dir = File(widget.zipPath).parent.path;
+      final infoFile = File('$dir/info_${widget.illustId}.json');
+      if (!await infoFile.exists()) {
+        throw 'info file not found';
+      }
+      final info =
+          jsonDecode(await infoFile.readAsString()) as Map<String, dynamic>;
+      final list = (info['ugoiraFrames'] as List?) ?? [];
+      if (list.isEmpty) throw 'no frames info';
+      if (!mounted) return;
+      setState(() {
+        frames = list
+            .map((e) => {
+                  'file': (e as Map)['file'].toString(),
+                  'delay': (e['delay'] as num).toInt(),
+                })
+            .toList();
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString());
+    }
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowMaximize() {
+    setState(() {
+      windowButtonKey++;
+    });
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() {
+      windowButtonKey++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+      color: FluentTheme.of(context).micaBackgroundColor,
+      child: LayoutBuilder(builder: (context, constrains) {
+        Widget body;
+        if (error != null) {
+          body = Center(child: Text(error!));
+        } else if (frames == null) {
+          body = const Center(child: ProgressRing());
+        } else {
+          body = UgoiraWidget(
+            key: ValueKey(widget.illustId),
+            id: widget.illustId.toString(),
+            localZipPath: widget.zipPath,
+            localFrames: frames!,
+            width: constrains.maxWidth,
+            height: constrains.maxHeight,
+          );
+        }
+        return Stack(
+          children: [
+            Positioned.fill(child: Center(child: body)),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 36,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 6),
+                    IconButton(
+                        icon: const Icon(FluentIcons.back).paddingAll(2),
+                        onPressed: () => context.pop()),
+                    const Expanded(
+                      child: DragToMoveArea(
+                        child: SizedBox.expand(),
+                      ),
+                    ),
+                    if (App.isDesktop)
+                      WindowButtons(
+                        key: ValueKey(windowButtonKey),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }
