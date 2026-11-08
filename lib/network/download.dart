@@ -142,19 +142,29 @@ class DownloadingTask {
         var path = _generateFilePath(illust, _downloadingIndex, ext);
         final time = DateFormat("yyyy-MM-dd'T'HH:mm:ss'+00:00'").format(DateTime.now());
         final hash = md5.convert(utf8.encode(time + Network.hashSalt)).toString();
+        var file = File(path);
+        var resumeFrom = 0;
+        if (file.existsSync()) {
+          resumeFrom = file.lengthSync();
+        } else {
+          file.createSync(recursive: true);
+        }
+        final headers = {
+          "referer": "https://app-api.pixiv.net/",
+          "user-agent": "PixivAndroidApp/5.0.234 (Android 14; Pixes)",
+          "x-client-time": time,
+          "x-client-hash": hash,
+          "accept-enconding": "gzip",
+          if (resumeFrom > 0) "Range": "bytes=$resumeFrom-",
+        };
         var res = await dio.get<ResponseBody>(url, options: Options(
           responseType: ResponseType.stream,
-          headers: {
-            "referer": "https://app-api.pixiv.net/",
-            "user-agent": "PixivAndroidApp/5.0.234 (Android 14; Pixes)",
-            "x-client-time": time,
-            "x-client-hash": hash,
-            "accept-enconding": "gzip",
-          },
+          headers: headers,
         ));
-        var file = File(path);
-        if(!file.existsSync()) {
-          file.createSync(recursive: true);
+        if (resumeFrom > 0 && res.statusCode != 206) {
+          // Server ignored Range: restart the file instead of appending.
+          await file.writeAsBytes([], mode: FileMode.write);
+          resumeFrom = 0;
         }
         await for (var data in res.data!.stream) {
           await file.writeAsBytes(data, mode: FileMode.append);
@@ -466,6 +476,14 @@ class DownloadManager {
       saveArtworkMetadata(illust, task.imagePaths,
           task.ugoiraFrames.isEmpty ? null : task.ugoiraFrames);
       tasks.remove(task);
+      if (appdata.settings["saveAutoFavorite"] == true &&
+          !illust.isBookmarked) {
+        Network()
+            .addBookmark(illust.id.toString(), "add", "public")
+            .then((res) {
+          if (!res.error) illust.isBookmarked = true;
+        });
+      }
     });
     tasks.add(task);
     run();

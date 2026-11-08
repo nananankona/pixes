@@ -114,6 +114,7 @@ class AppDio extends DioForNative {
     if (!isInitialized) {
       isInitialized = true;
       interceptors.add(MyLogInterceptor());
+      interceptors.add(_MirrorInterceptor());
     }
     if(T == Map<String, dynamic>) {
       var res = await super.request<String>(path,
@@ -163,6 +164,119 @@ class AppDio extends DioForNative {
         options: options,
         onSendProgress: onSendProgress,
         onReceiveProgress: onReceiveProgress);
+  }
+}
+
+/// Rewrites pixiv image hosts to a user mirror (network mode 2).
+class _MirrorInterceptor implements Interceptor {
+  static const _pximgHosts = {'i.pximg.net', 's.pximg.net'};
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    try {
+      if ((appdata.settings["networkMode"] as int? ?? 0) == 2) {
+        final mirror =
+            (appdata.settings["imageMirror"] as String? ?? '').trim();
+        final host = mirror
+            .replaceFirst(RegExp(r'^https?://'), '')
+            .split('/')
+            .first
+            .trim();
+        if (host.isNotEmpty && _pximgHosts.contains(options.uri.host)) {
+          final rewritten = options.uri.replace(host: host);
+          options.path = rewritten.toString();
+        }
+      }
+    } catch (_) {}
+    handler.next(options);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) =>
+      handler.next(err);
+
+  @override
+  void onResponse(
+          Response<dynamic> response, ResponseInterceptorHandler handler) =>
+      handler.next(response);
+}
+
+class _DohEntry {
+  final InternetAddress ip;
+  final DateTime expires;
+  _DohEntry(this.ip, this.expires);
+}
+
+final Map<String, _DohEntry> _dohCache = {};
+
+bool _hasUserProxy() {
+  final proxy = appdata.settings["proxy"];
+  return proxy != null && proxy.toString().removeAllBlank.isNotEmpty;
+}
+
+/// DNS-over-HTTPS resolution (Cloudflare) for GFW/campus networks.
+Future<InternetAddress> _dohResolve(String host) async {
+  final now = DateTime.now();
+  final cached = _dohCache[host];
+  if (cached != null && now.isBefore(cached.expires)) return cached.ip;
+  final client = HttpClient();
+  try {
+    final req = await client.getUrl(Uri.parse(
+        'https://1.1.1.1/dns-query?name=${Uri.encodeComponent(host)}&type=A'));
+    req.headers.set('accept', 'application/dns-json');
+    final res = await req.close().timeout(const Duration(seconds: 8));
+    final body = await res.transform(utf8.decoder).join();
+    final json = jsonDecode(body) as Map<String, dynamic>;
+    final answers = (json['Answer'] as List?) ?? [];
+    for (final a in answers) {
+      if (a is Map && a['type'] == 1) {
+        final ip = InternetAddress.tryParse(a['data'].toString());
+        if (ip != null) {
+          _dohCache[host] =
+              _DohEntry(ip, now.add(const Duration(minutes: 5)));
+          return ip;
+        }
+      }
+    }
+    throw "DoH: no A record for $host";
+  } finally {
+    client.close(force: true);
+  }
+}
+
+Future<Socket> _dohSocket(Uri url) async {
+  final host = url.host;
+  final port =
+      url.hasPort ? url.port : (url.scheme == 'https' ? 443 : 80);
+  final literal = InternetAddress.tryParse(host);
+  if (literal != null) {
+    return url.scheme == 'https'
+        ? await SecureSocket.connect(literal, port)
+        : await Socket.connect(literal, port);
+  }
+  final ip = await _dohResolve(host);
+  if (url.scheme != 'https') {
+    return await Socket.connect(ip, port,
+        timeout: const Duration(seconds: 8));
+  }
+  // Raw TCP to the resolved IP, then TLS with the real hostname so SNI
+  // and certificate verification target the original host.
+  var raw = await Socket.connect(ip, port,
+      timeout: const Duration(seconds: 8));
+  try {
+    return await SecureSocket.secure(raw, host: host);
+  } catch (_) {
+    // Fallback without cert verification (same tradeoff as classic
+    // SNI-bypass tools). Only in DoH mode.
+    Log.warning(
+        "Network", "DoH: cert verify failed for $host, retrying insecure");
+    try {
+      raw.destroy();
+    } catch (_) {}
+    raw = await Socket.connect(ip, port,
+        timeout: const Duration(seconds: 8));
+    return await SecureSocket.secure(raw,
+        host: host, onBadCertificate: (_) => true);
   }
 }
 
@@ -217,6 +331,13 @@ class _ProxyHttpOverrides extends HttpOverrides {
     final client = super.createHttpClient(context);
     client.connectionTimeout = const Duration(seconds: 5);
     client.findProxy = findProxy;
+    if ((appdata.settings["networkMode"] as int? ?? 0) == 1 &&
+        !_hasUserProxy()) {
+      client.connectionFactory = (url, proxyHost, proxyPort) {
+        return Future.value(
+            ConnectionTask.fromSocket(_dohSocket(url), () {}));
+      };
+    }
     return client;
   }
 }

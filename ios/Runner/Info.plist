@@ -57,8 +57,12 @@
         </dict>
     </array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>photo</string>
+	<string>Save artworks to your photo library</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>photo</string>
+	<string>Access the photo library to save and manage artworks</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

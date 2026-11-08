@@ -442,6 +442,26 @@ class _SearchSettingsState extends State<SearchSettings> {
             ),
           ).toAlign(Alignment.centerLeft),
           buildItem(
+              title: "Safe only".tl,
+              child: ToggleSwitch(
+                checked: appdata.settings["safeOnly"] == true,
+                onChanged: (value) {
+                  setState(() {
+                    appdata.settings["safeOnly"] = value;
+                  });
+                  appdata.writeData();
+                  widget.onChanged?.call();
+                },
+              )),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+            child: Text(
+              "Tip: use A OR B to combine keywords (up to 5)".tl,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ).toAlign(Alignment.centerLeft),
+          buildItem(
               title: "Match".tl,
               child: DropDownButton(
                 title: Text(appdata.searchOptions.matchType.toString().tl),

@@ -339,10 +339,11 @@ class Network {
   Future<Res<List<Illust>>> search(
       String keyword, SearchOptions options) async {
     String path = "";
+    final safe = appdata.settings["safeOnly"] == true;
     final encodedKeyword = Uri.encodeComponent(keyword +
         options.favoriteNumber.toParam() +
-        options.ageLimit.toParam());
-    final aiType = options.includeAiGeneratedWorks ? 0 : 1;
+        (safe ? " -R-18 -R-18G" : options.ageLimit.toParam()));
+    final aiType = (safe || !options.includeAiGeneratedWorks) ? 1 : 0;
     if (options.sort == SearchSort.popular && !options.sort.isPremium) {
       path =
           "/v1/search/popular-preview/illust?filter=for_android&include_translated_tag_results=true&merge_plain_keyword_results=true&word=$encodedKeyword&search_target=${options.matchType.toParam()}&search_ai_type=$aiType";

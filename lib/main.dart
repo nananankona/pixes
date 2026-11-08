@@ -392,6 +392,25 @@ style: TextStyle(
                             ],
                           );
                         }
+                       final dim =
+                            ((appdata.settings["readerDim"] as num?)
+                                    ?.toDouble() ??
+                                0.0)
+                                .clamp(0.0, 0.8);
+                        if (dim > 0.01) {
+                          widget = Stack(
+                            children: [
+                              Positioned.fill(child: widget),
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: Container(
+                                    color: Colors.black.withValues(alpha: dim),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
                        return KeyEventListener(child: widget);
                      });
               },

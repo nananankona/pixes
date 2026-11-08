@@ -1311,9 +1311,15 @@ class _BottomBarState extends State<_BottomBar> with TickerProviderStateMixin {
         context.showToast(message: "Network Error");
       }
     } else {
+      final added = method == "add";
       widget.illust.isBookmarked = !widget.illust.isBookmarked;
       IllustWidget.favoriteCallbacks[widget.illust.id.toString()]
           ?.call(widget.illust.isBookmarked);
+      if (added &&
+          appdata.settings["favoriteAutoSave"] == true &&
+          !widget.illust.downloaded) {
+        DownloadManager().addDownloadingTask(widget.illust);
+      }
     }
     setState(() {
       isBookmarking = false;

@@ -18,6 +18,7 @@ import 'package:pixes/pages/main_page.dart';
 import 'package:pixes/pages/sync_page.dart';
 import 'package:pixes/utils/io.dart';
 import 'package:pixes/utils/translation.dart';
+import 'package:pixes/utils/theme_background.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'logs.dart';
@@ -30,48 +31,137 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Helper: show a simple hex color picker (RGB sliders)
+  // Helper: HSV color picker with hex input + recent colors
   Future<void> _pickHexColor(String title, String settingKey) async {
-    // parse existing hex or default to white
-    String current = (appdata.settings[settingKey] ?? "");
-    int r = 255, g = 255, b = 255;
-    if (current.startsWith('#') && current.length == 7) {
-      try {
-        r = int.parse(current.substring(1, 3), radix: 16);
-        g = int.parse(current.substring(3, 5), radix: 16);
-        b = int.parse(current.substring(5, 7), radix: 16);
-      } catch (_) {}
-    }
-    double rVal = r.toDouble();
-    double gVal = g.toDouble();
-    double bVal = b.toDouble();
+    Color current = _parseHexColor(
+            (appdata.settings[settingKey] as String?) ?? "") ??
+        Colors.white;
+    var hsv = HSVColor.fromColor(current);
+    final hexCtl = TextEditingController(
+        text:
+            '#${current.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}');
     await showDialog(
       context: context,
       builder: (c) => ContentDialog(
         title: Text(title),
         content: StatefulBuilder(
-          builder: (context, innerSetState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('R'),
-              Slider(min: 0, max: 255, divisions: 255, value: rVal, onChanged: (v) => innerSetState(() => rVal = v)),
-              const Text('G'),
-              Slider(min: 0, max: 255, divisions: 255, value: gVal, onChanged: (v) => innerSetState(() => gVal = v)),
-              const Text('B'),
-              Slider(min: 0, max: 255, divisions: 255, value: bVal, onChanged: (v) => innerSetState(() => bVal = v)),
-              const SizedBox(height: 8),
-              Container(width: 40, height: 40, color: Color.fromRGBO(rVal.toInt(), gVal.toInt(), bVal.toInt(), 1)),
-            ],
-          ),
+          builder: (context, innerSetState) {
+            void applyHsv(HSVColor v) {
+              hsv = v;
+              final col = v.toColor();
+              hexCtl.text =
+                  '#${col.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+            }
+
+            final raw = appdata.settings["recentColors"];
+            final recents = raw is List
+                ? raw.map((e) => e.toString()).take(8).toList()
+                : <String>[];
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      color: hsv.toColor(),
+                      border: Border.all(
+                          color: ColorScheme.of(context).outlineVariant),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('H'),
+                  Slider(
+                      min: 0,
+                      max: 360,
+                      value: hsv.hue,
+                      onChanged: (v) => innerSetState(
+                          () => applyHsv(hsv.withHue(v)))),
+                  const Text('S'),
+                  Slider(
+                      min: 0,
+                      max: 1,
+                      value: hsv.saturation,
+                      onChanged: (v) => innerSetState(
+                          () => applyHsv(hsv.withSaturation(v)))),
+                  const Text('V'),
+                  Slider(
+                      min: 0,
+                      max: 1,
+                      value: hsv.value,
+                      onChanged: (v) =>
+                          innerSetState(() => applyHsv(hsv.withValue(v)))),
+                  const SizedBox(height: 4),
+                  TextBox(
+                    controller: hexCtl,
+                    placeholder: '#RRGGBB',
+                    onChanged: (v) {
+                      final col = _parseHexColor(v);
+                      if (col != null) {
+                        innerSetState(() {
+                          hsv = HSVColor.fromColor(col);
+                        });
+                      }
+                    },
+                  ),
+                  if (recents.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('Recent'.tl,
+                        style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final hex in recents)
+                          GestureDetector(
+                            onTap: () {
+                              final col = _parseHexColor(hex);
+                              if (col != null) {
+                                innerSetState(() {
+                                  applyHsv(HSVColor.fromColor(col));
+                                });
+                              }
+                            },
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _parseHexColor(hex),
+                                border: Border.all(
+                                    color: ColorScheme.of(context)
+                                        .outlineVariant),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
         actions: [
           Button(
             child: Text('Confirm'.tl),
             onPressed: () {
-              final hex = '#'
-                  '${rVal.toInt().toRadixString(16).padLeft(2, '0')}'
-                  '${gVal.toInt().toRadixString(16).padLeft(2, '0')}'
-                  '${bVal.toInt().toRadixString(16).padLeft(2, '0')}';
+              var hex = hexCtl.text.trim();
+              if (!hex.startsWith('#')) hex = '#$hex';
+              final col = _parseHexColor(hex) ?? hsv.toColor();
+              hex =
+                  '#${col.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+              final raw = appdata.settings["recentColors"];
+              final recents = raw is List
+                  ? raw.map((e) => e.toString()).toList()
+                  : <String>[];
+              recents.remove(hex);
+              recents.insert(0, hex);
+              appdata.settings["recentColors"] =
+                  recents.take(8).toList();
               setState(() {
                 appdata.settings[settingKey] = hex;
               });
@@ -84,6 +174,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+
   Color? _parseHexColor(String? hex) {
     if (hex == null || hex.isEmpty) return null;
     var cleaned = hex.replaceFirst('#', '');
@@ -223,6 +314,8 @@ class _SettingsPageState extends State<SettingsPage> {
     [1, "Novel auto-scroll speed"], [1, "Illust auto-scroll speed"],
     [3, "Text shadow"], [3, "Text color"], [3, "Icon color"],
     [3, "Shadow color"], [3, "Card opacity"],
+    [1, "Network mode"], [1, "Image mirror host"],
+    [2, "Auto-save on bookmark"], [2, "Auto-bookmark on save"],
     [1, "Auto advance to next artwork"],
     [2, "Download Path"], [2, "Subpath"], [2, "Max parallels"],
     [2, "Folder organization"], [2, "Auto download on view"],
@@ -605,7 +698,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: Text("Browse".tl).fixWidth(64),
                     onPressed: () async {
                       if (Platform.isIOS) {
-                        showToast(context, message: "Unsupported platform".tl);
+                        showToast(context,
+                            message: "Saved to the Files app".tl);
                         return;
                       }
                       final String? dir = await getDirectoryPath(
@@ -620,14 +714,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     },
                   ),
                   const SizedBox(width: 8),
-                  Button(
-                    child: Text("Manage".tl).fixWidth(64),
-                    onPressed: () {
-                      if (Platform.isIOS) {
-                        showToast(context, message: "Unsupported platform".tl);
-                        return;
-                      }
-                      context.to(() => _SetSingleFieldPage(
+                  if (!Platform.isIOS)
+                    Button(
+                        child: Text("Manage".tl).fixWidth(64),
+                        onPressed: () {
+                          context.to(() => _SetSingleFieldPage(
                             "Download Path".tl,
                             "downloadPath",
                             check: (text) {
@@ -638,7 +729,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               }
                             },
                           ));
-                    }),
+                        }),
                   const SizedBox(width: 8),
                   Button(
                     child: Text("Reset".tl).fixWidth(64),
@@ -739,6 +830,30 @@ class _SettingsPageState extends State<SettingsPage> {
                             appdata.writeSettings();
                           }),
                   ])),
+          buildItem(
+              title: "Auto-save on bookmark".tl,
+              subtitle: "Download when bookmarking".tl,
+              action: ToggleSwitch(
+                  checked:
+                      appdata.settings["favoriteAutoSave"] == true,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["favoriteAutoSave"] = value;
+                    });
+                    appdata.writeData();
+                  })),
+          buildItem(
+              title: "Auto-bookmark on save".tl,
+              subtitle: "Bookmark when download completes".tl,
+              action: ToggleSwitch(
+                  checked:
+                      appdata.settings["saveAutoFavorite"] == true,
+                  onChanged: (value) {
+                    setState(() {
+                      appdata.settings["saveAutoFavorite"] = value;
+                    });
+                    appdata.writeData();
+                  })),
           buildItem(
             title: "Cache limit (MB)".tl,
             subtitle: _cacheUsageText(),
@@ -952,6 +1067,48 @@ class _SettingsPageState extends State<SettingsPage> {
                       ));
                 },
               )),
+          buildItem(
+              title: "Network mode".tl,
+              subtitle: "Restart required".tl,
+              action: DropDownButton(
+                  title: Text(switch (
+                      appdata.settings["networkMode"] as int? ?? 0) {
+                    1 => "DoH".tl,
+                    2 => "Mirror".tl,
+                    _ => "Normal".tl,
+                  }),
+                  items: [
+                    for (final entry in [
+                      (0, "Normal"),
+                      (1, "DoH"),
+                      (2, "Mirror"),
+                    ])
+                      MenuFlyoutItem(
+                          text: Text(entry.$2.tl),
+                          onPressed: () {
+                            setState(() {
+                              appdata.settings["networkMode"] = entry.$1;
+                            });
+                            appdata.writeData();
+                          }),
+                  ])),
+          if ((appdata.settings["networkMode"] as int? ?? 0) == 2)
+            buildItem(
+                title: "Image mirror host".tl,
+                subtitle: (appdata.settings["imageMirror"] as String?)
+                            ?.isNotEmpty ==
+                        true
+                    ? appdata.settings["imageMirror"]
+                    : "i.pximg.net",
+                action: Button(
+                  child: Text("Edit".tl).fixWidth(64),
+                  onPressed: () {
+                    context.to(() => _SetSingleFieldPage(
+                          "Image mirror host".tl,
+                          "imageMirror",
+                        ));
+                  },
+                )),
           buildItem(
               title: "Block(Account)".tl,
               action: Button(
@@ -1387,6 +1544,76 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Background history".tl,
+                      style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Builder(builder: (context) {
+                    final raw =
+                        appdata.settings["themeBackgroundHistory"];
+                    final hist = raw is List
+                        ? raw
+                            .map((e) => e.toString())
+                            .where((p) => File(p).existsSync())
+                            .take(10)
+                            .toList()
+                        : <String>[];
+                    if (hist.isEmpty) {
+                      return Text("No history".tl,
+                          style: const TextStyle(fontSize: 12));
+                    }
+                    final current =
+                        appdata.settings["themeBackground"] as String?;
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final p in hist)
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                applyThemeBackground(p);
+                              });
+                            },
+                            onLongPress: () async {
+                              await removeThemeBackground(p);
+                              if (mounted) setState(() {});
+                            },
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: p == current
+                                      ? FluentTheme.of(context).accentColor
+                                      : ColorScheme.of(context).outlineVariant,
+                                  width: p == current ? 3 : 1,
+                                ),
+                                image: DecorationImage(
+                                  image: FileImage(File(p)),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                  Text("Tap to apply, long-press to delete".tl,
+                      style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ),
           buildItem(
             title: "Text shadow".tl,
             subtitle: "Add shadows to text and icons".tl,
@@ -1613,6 +1840,42 @@ class _SettingsPageState extends State<SettingsPage> {
                         onPressed: () {
                           setState(() {
                             appdata.settings["language"] = "日本語";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        }),
+                    MenuFlyoutItem(
+                        text: const Text("한국어"),
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["language"] = "한국어";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        }),
+                    MenuFlyoutItem(
+                        text: const Text("Español"),
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["language"] = "Español";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        }),
+                    MenuFlyoutItem(
+                        text: const Text("Русский"),
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["language"] = "Русский";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        }),
+                    MenuFlyoutItem(
+                        text: const Text("Indonesia"),
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["language"] = "Indonesia";
                           });
                           appdata.writeData();
                           StateController.findOrNull(tag: "MyApp")?.update();

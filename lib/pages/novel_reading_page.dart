@@ -39,6 +39,7 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
   final ScrollController _scrollController = ScrollController();
 
   String _selectedText = "";
+  bool _resumeChecked = false;
 
   Timer? _scrollTimer;
 
@@ -67,22 +68,16 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
     _speakWidgetIndex = [];
     var wi = 4; // title, spacing, divider, spacing
     for (final line in raw.split('\n')) {
-      if (line.isEmpty) continue;
-      if (line.startsWith('[uploadedimage:')) {
+      if (line.trim().isEmpty) continue;
+      if (line.trimLeft().startsWith('[uploadedimage:')) {
         wi++;
         continue;
       }
-      var t = line;
-      if (t.startsWith('[chapter:')) {
-        t = t.replaceFirst('[chapter:', '');
-        if (t.endsWith(']')) t = t.substring(0, t.length - 1);
-        t = t.trim();
-      }
-      if (t.isEmpty) {
-        wi++;
+      final cleaned = cleanTtsLine(line);
+      if (cleaned == null) {
         continue;
       }
-      _speakParagraphs.add(line);
+      _speakParagraphs.add(cleaned);
       _speakWidgetIndex.add(wi);
       wi++;
     }
@@ -194,7 +189,19 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
   void dispose() {
     TtsService().paragraphIndex.removeListener(_onTtsParagraph);
     TtsService().stop();
-    _scrollTimer?.cancel();
+    try {
+      if (_scrollController.hasClients) {
+        final raw = appdata.settings["novelPositions"];
+        final m = raw is Map
+            ? Map<String, int>.from(raw.map(
+                (k, v) => MapEntry(k.toString(), (v as num).toInt())))
+            : <String, int>{};
+        m[widget.novel.id.toString()] =
+            _scrollController.offset.toInt();
+        appdata.settings["novelPositions"] = m;
+        appdata.writeSettings();
+      }
+    } catch (_) {}
     _scrollController.dispose();
     Future.delayed(const Duration(milliseconds: 200), () {
       StateController.find<TitleBarController>().removeAction(action!);
@@ -204,6 +211,10 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
 
   @override
   Widget buildContent(BuildContext context, String data) {
+    if (!_resumeChecked) {
+      _resumeChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeResume());
+    }
     var content = buildList(context).toList();
     final ttsPlaying = TtsService().playing;
     return ScaffoldPage(
@@ -265,6 +276,15 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
               child: Icon(_autoScrolling ? FluentIcons.pause : FluentIcons.play),
             ),
           ),
+          if (widget.novel.seriesId != null)
+            Positioned(
+              right: 16,
+              bottom: 128,
+              child: Button(
+                onPressed: _showSeriesToc,
+                child: const Icon(FluentIcons.list),
+              ),
+            ),
           Positioned(
             right: 16,
             bottom: 72,
@@ -280,6 +300,96 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
                       ? FluentIcons.stop
                       : FluentIcons.speakers),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _maybeResume() {
+    if (!mounted) return;
+    final raw = appdata.settings["novelPositions"];
+    final saved = raw is Map
+        ? (raw[widget.novel.id.toString()] as num?)?.toInt()
+        : null;
+    if (saved == null || saved < 200 || !_scrollController.hasClients) {
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (c) => ContentDialog(
+        title: Text("Resume reading?".tl),
+        actions: [
+          Button(
+            child: Text('Cancel'.tl),
+            onPressed: () => Navigator.of(c).pop(),
+          ),
+          FilledButton(
+            child: Text('Resume'.tl),
+            onPressed: () {
+              Navigator.of(c).pop();
+              try {
+                _scrollController.jumpTo(saved.toDouble());
+              } catch (_) {}
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSeriesToc() {
+    final id = widget.novel.seriesId;
+    if (id == null) return;
+    showDialog(
+      context: context,
+      builder: (c) => ContentDialog(
+        title: Text(widget.novel.seriesTitle ?? "Series".tl),
+        content: SizedBox(
+          width: 420,
+          height: 420,
+          child: FutureBuilder(
+            future: Network().getNovelSeries(id.toString()),
+            builder: (context, snap) {
+              if (!snap.hasData) {
+                return const Center(child: ProgressRing());
+              }
+              final res = snap.data!;
+              if (res.error || res.data.isEmpty) {
+                return Center(child: Text("No results".tl));
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: res.data.length,
+                itemBuilder: (context, i) {
+                  final n = res.data[i];
+                  final current =
+                      n.id.toString() == widget.novel.id.toString();
+                  return ListTile(
+                    title: Text(n.title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(n.author.name,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: current
+                        ? const Icon(FluentIcons.check_mark, size: 14)
+                        : null,
+                    onPressed: current
+                        ? null
+                        : () {
+                            Navigator.of(c).pop();
+                            Navigator.of(context).push(AppPageRoute(
+                                builder: (_) => NovelReadingPage(n)));
+                          },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          Button(
+            child: Text('Close'.tl),
+            onPressed: () => Navigator.of(c).pop(),
           ),
         ],
       ),
@@ -333,20 +443,54 @@ class _NovelReadingPageState extends LoadingState<NovelReadingPage, String> {
         );
       } else if (content.startsWith('[chapter:')) {
         var title = content.replaceLast(']', '').split(':')[1];
-        yield Text(title,
+        yield Text(applyYumePairs(title),
                 style: TextStyle(
                     fontSize: 20.0 + fontSizeAdd,
                     fontWeight: FontWeight.bold,
                     height: fontHeight))
             .paddingBottom(8);
       } else {
-        yield Text(content,
+        yield Text(applyYumePairs(content),
                 style:
                     TextStyle(fontSize: 16.0 + fontSizeAdd, height: fontHeight))
             .paddingBottom(appdata.settings["readingParagraphSpacing"]);
       }
     }
   }
+}
+
+/// Name conversion (yume) applied to display text and TTS.
+String applyYumePairs(String text) {
+  final raw = appdata.settings["yumePairs"];
+  if (raw is! Map || raw.isEmpty) return text;
+  var out = text;
+  raw.forEach((k, v) {
+    final from = k.toString();
+    if (from.isNotEmpty) out = out.replaceAll(from, v.toString());
+  });
+  return out;
+}
+
+/// Cleans a raw novel line for TTS. Returns null to skip the line.
+/// Normalizes repeated "…" / "・・・" (read aloud as nakaguro) etc.
+String? cleanTtsLine(String line) {
+  var t = line.trim();
+  if (t.isEmpty) return null;
+  if (t.startsWith('[newpage') ||
+      t.startsWith('[jump') ||
+      t.startsWith('[uploadedimage:')) return null;
+  if (t.startsWith('[chapter:')) {
+    t = t.replaceFirst('[chapter:', '');
+    if (t.endsWith(']')) t = t.substring(0, t.length - 1);
+    t = t.trim();
+  }
+  t = t.replaceAllMapped(
+      RegExp(r'\[\[rb:(.+?)>(.+?)\]\]'), (m) => m.group(2)!);
+  t = applyYumePairs(t);
+  t = t.replaceAll(RegExp(r'[…・]{2,}'), '、');
+  t = t.replaceAll(RegExp(r'[―─—−]{2,}'), '、');
+  if (t.trim().isEmpty) return null;
+  return t;
 }
 
 class TranslationController {
@@ -395,6 +539,8 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
   late final TextEditingController _capPassCtl;
   late final TextEditingController _capV1WsCtl;
   bool _testing = false;
+  late final TextEditingController _yumeFromCtl;
+  late final TextEditingController _yumeToCtl;
 
   @override
   void initState() {
@@ -414,6 +560,8 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
     _capV1WsCtl = TextEditingController(
         text: (appdata.settings['capcutV1WsUrl'] as String?) ??
             'wss://sami-sg1.internal.byteintlapi.com/internal/api/v1/ws');
+    _yumeFromCtl = TextEditingController();
+    _yumeToCtl = TextEditingController();
   }
 
   @override
@@ -424,6 +572,8 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
     _capEmailCtl.dispose();
     _capPassCtl.dispose();
     _capV1WsCtl.dispose();
+    _yumeFromCtl.dispose();
+    _yumeToCtl.dispose();
     super.dispose();
   }
 
@@ -512,6 +662,25 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
               ),
               trailing:
                   Text(appdata.settings["readingParagraphSpacing"].toString()),
+            ),
+          ).paddingHorizontal(8).paddingBottom(8),
+          Card(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              title: Text("Screen dim".tl),
+              subtitle: Slider(
+                value: ((appdata.settings["readerDim"] as num?)?.toDouble() ?? 0.0),
+                onChanged: (value) {
+                  setState(() {
+                    appdata.settings["readerDim"] = value;
+                  });
+                  appdata.writeSettings();
+                  StateController.findOrNull(tag: "MyApp")?.update();
+                },
+                min: 0.0,
+                max: 0.8,
+              ),
+              trailing: Text((((appdata.settings["readerDim"] as num?)?.toDouble() ?? 0.0) * 100).toStringAsFixed(0) + "%"),
             ),
           ).paddingHorizontal(8).paddingBottom(8),
           Card(
@@ -863,6 +1032,98 @@ class __NovelReadingSettingsState extends State<_NovelReadingSettings> {
                             )
                           : Text("Translate".tl),
                     ),
+            ),
+          ).paddingHorizontal(8).paddingBottom(8),
+          Card(
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Name conversion".tl,
+                      style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Builder(builder: (context) {
+                    final raw = appdata.settings["yumePairs"];
+                    final pairs = raw is Map
+                        ? raw.map((k, v) =>
+                            MapEntry(k.toString(), v.toString()))
+                        : <String, String>{};
+                    if (pairs.isEmpty) {
+                      return Text("No conversions".tl,
+                          style: const TextStyle(fontSize: 12));
+                    }
+                    return Column(
+                      children: [
+                        for (final e in pairs.entries)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text("${e.key} → ${e.value}",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                Button(
+                                  child: Text("Delete".tl).fixWidth(48),
+                                  onPressed: () {
+                                    final m = Map<String, String>.from(pairs);
+                                    m.remove(e.key);
+                                    appdata.settings["yumePairs"] = m;
+                                    appdata.writeSettings();
+                                    setState(() {});
+                                    widget.callback();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextBox(
+                          controller: _yumeFromCtl,
+                          placeholder: "Before".tl,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: TextBox(
+                          controller: _yumeToCtl,
+                          placeholder: "After".tl,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Button(
+                        child: Text("Add".tl).fixWidth(48),
+                        onPressed: () {
+                          final from = _yumeFromCtl.text.trim();
+                          if (from.isEmpty) return;
+                          final raw = appdata.settings["yumePairs"];
+                          final m = raw is Map
+                              ? Map<String, String>.from(raw.map((k, v) =>
+                                  MapEntry(k.toString(), v.toString())))
+                              : <String, String>{};
+                          m[from] = _yumeToCtl.text;
+                          appdata.settings["yumePairs"] = m;
+                          appdata.writeSettings();
+                          _yumeFromCtl.clear();
+                          _yumeToCtl.clear();
+                          setState(() {});
+                          widget.callback();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ).paddingHorizontal(8).paddingBottom(8),
         ],

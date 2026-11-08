@@ -5,68 +5,79 @@
 [![Download](https://img.shields.io/github/v/release/nananankona/pixes)](https://github.com/nananankona/pixes)
 [![stars](https://img.shields.io/github/stars/nananankona/pixes)](https://github.com/nananankona/pixes/stargazers)
 
-Unofficial Pixiv app, support Windows, Android, iOS, macOS, linux
+非公式Pixivクライアント。Windows、Android、iOS、macOS、Linuxに対応。
 
-All main features are implemented.
+主要な機能はすべて実装されています。
 
 ## Fork
 
-This is a fork of [wgh136/pixes](https://github.com/wgh136/pixes) with the following additions:
+このリポジトリは [wgh136/pixes](https://github.com/wgh136/pixes) のフォークであり、以下の機能が追加されています：
 
-- Custom font
-- Hide email address
-- Age tag display fix
-- Japanese localization
-- PIN lock
-- Data export / import
-- Token login (login with config file)
-- Supabase sync (sync search/browsing history and settings across devices)
-- Custom theme (accent color, background color/image, blur, text shadow)
-- Slideshow, auto-download, folder organization, search presets
-- Novel TTS reading (VOICEVOX / CapCut) and Google search on selection
+- カスタムフォント
+- メールアドレス非表示
+- 年齢タグ不具合修正
+- 日本語対応
+- PINロック
+- データエクスポート / インポート
+- トークンログイン（設定ファイルによるログイン）
+- Supabase同期（検索履歴・閲覧履歴・設定をデバイス間で同期）
+- カスタムテーマ（アクセントカラー、背景色/画像、ぼかし、文字シャドウ）
+- スライドショー、自動ダウンロード、フォルダ振り分け、検索プリセット
+- 小説のTTS読み上げ（VOICEVOX / CapCut）と選択テキストのGoogle検索
+- 接続耐性オプション（DoH、画像ミラー）、健全モード、画面減光
 
-[Japanese README is here](README_JA.md)
+[English README](README_EN.md)
 
-[Docs](docs/README.md) (Japanese)
+[ドキュメント](docs/README.md)
 
-## Download
+## ダウンロード
 
-Download from [Release](https://github.com/nananankona/pixes/releases)
+[Release](https://github.com/nananankona/pixes/releases) からダウンロード
 
-## Build from source
+## ソースからビルド
 
-### Install Flutter
+### Flutterのインストール
 
-View [Flutter Document](https://flutter.dev/docs/get-started/install)
+[Flutter Document](https://flutter.dev/docs/get-started/install) を参照
 
-### Build Android
+### Androidのビルド
 
-Put your keystore file (`key.jks`, `key.properties`) in `android/`
+`android/` にキーストアファイル（`key.jks`、`key.properties`）を配置
 
-Run `flutter build apk`
+`flutter build apk` を実行
 
-### Build iOS/Windows/macOS
+### iOS/Windows/macOSのビルド
 
-Run `flutter build ios/windows/macos`
+`flutter build ios/windows/macos` を実行
 
-### Build Linux
+### Linuxのビルド
 
-Use`python3 debian/build.py {ARCH}` to build deb package. Replace {ARCH} with `x64` or `arm64`.
+`python3 debian/build.py {ARCH}` でdebパッケージをビルド。{ARCH} は `x64` または `arm64`。
 
-For other linux distributions, you can use `flutter build linux` to build.
-You must register the `pixiv` scheme in the `.desktop` file, otherwise the login will not work.
+その他のLinuxディストリビューションでは `flutter build linux` でビルド可能。
+ログインを機能させるには `.desktop` ファイルに `pixiv` スキームを登録する必要があります。
 
-## Sync (cross-device)
+## 同期（デバイス間）
 
-Requires a self-hosted Supabase project.
+自己ホストのSupabaseプロジェクトが必要です。
 
-1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. Go to **Settings → API** and copy your **anon key**(or**service_role**)
-3. In pixes, open **Settings → Sync** and enter your Supabase URL and anon key
-4. Tap **Test Connection** – follow the in-app setup guide to run the SQL commands
-5. Enable **Sync** – your search history, browsing history, and settings will sync across devices automatically
+1. [supabase.com](https://supabase.com) でSupabaseプロジェクトを作成
+2. **Settings → API** から **anon key**(または**service_role**) をコピー
+3. pixesの **設定 → Sync** を開き、Supabase URLとanon keyを入力
+4. **接続テスト** をタップ -- アプリ内のセットアップガイドに従ってSQLを実行
+5. **同期を有効化** -- 検索履歴・閲覧履歴・設定が自動で同期されます
 
-## Screenshots
+## Star History
+
+<a href="https://www.star-history.com/?repos=nananankona%2Fpixes&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nananankona/pixes&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nananankona/pixes&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nananankona/pixes&type=date&legend=top-left" />
+ </picture>
+</a>
+
+## スクリーンショット
 
 <img src="screenshots/1.png" style="width: 400px">
 <img src="screenshots/2.png" style="width: 400px">

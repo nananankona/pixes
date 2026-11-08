@@ -83,6 +83,16 @@ class _Appdata {
     "slideshowInterval": 3,
     "slideshowLoop": false,
     "folderMode": 0,
+    "readerDim": 0.0,
+    "themeBackgroundHistory": <String>[],
+    "recentColors": <String>[],
+    "safeOnly": false,
+    "networkMode": 0,
+    "imageMirror": "",
+    "favoriteAutoSave": false,
+    "saveAutoFavorite": false,
+    "novelPositions": <String, int>{},
+    "yumePairs": <String, String>{},
   };
 
   bool lock = false;
@@ -387,6 +397,16 @@ class _Appdata {
       var downloadPath = (await getDownloadsDirectory())?.path;
       if (downloadPath != null && Directory(downloadPath).havePermission()) {
         return "$downloadPath/pixes";
+      }
+    } else if (App.isIOS) {
+      // Visible in the Files app (see UIFileSharingEnabled in Info.plist).
+      try {
+        final docs = await getApplicationDocumentsDirectory();
+        final dir = Directory("${docs.path}/pixes");
+        if (!await dir.exists()) await dir.create(recursive: true);
+        return dir.path;
+      } catch (_) {
+        return "${App.dataPath}/download";
       }
     } else if (App.isMacOS) {
       if (Directory("~/Pictures").havePermission()) {

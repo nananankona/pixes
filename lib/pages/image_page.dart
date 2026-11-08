@@ -16,6 +16,7 @@ import 'package:pixes/foundation/image_provider.dart';
 import 'package:pixes/pages/main_page.dart';
 import 'package:pixes/utils/io.dart';
 import 'package:pixes/utils/translation.dart';
+import 'package:pixes/utils/theme_background.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -185,6 +186,54 @@ class _ImagePageState extends State<ImagePage> with WindowListener {
                           }
                         }
                       }),
+                MenuFlyoutItem(
+                    text: Text("Set as background".tl),
+                    onPressed: () async {
+                      var file = await getFile();
+                      if (file == null) return;
+                      final installed =
+                          await installThemeBackgroundFile(file.path);
+                      if (context.mounted) {
+                        showToast(
+                            context,
+                            message: installed != null
+                                ? "Background updated".tl
+                                : "Failed".tl);
+                      }
+                    }),
+                MenuFlyoutItem(
+                    text: Text("Screen dim".tl),
+                    onPressed: () {
+                      var dim = ((appdata.settings["readerDim"] as num?)
+                              ?.toDouble() ??
+                          0.0);
+                      showDialog(
+                        context: context,
+                        builder: (c) => ContentDialog(
+                          title: Text("Screen dim".tl),
+                          content: StatefulBuilder(
+                            builder: (context, innerSetState) => Slider(
+                              value: dim,
+                              min: 0.0,
+                              max: 0.8,
+                              onChanged: (v) {
+                                innerSetState(() => dim = v);
+                                appdata.settings["readerDim"] = v;
+                                appdata.writeSettings();
+                                StateController.findOrNull(tag: "MyApp")
+                                    ?.update();
+                              },
+                            ),
+                          ),
+                          actions: [
+                            Button(
+                              child: Text('Confirm'.tl),
+                              onPressed: () => Navigator.of(c).pop(),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                 MenuFlyoutItem(
                     text: Text("Share".tl),
                     onPressed: () async {

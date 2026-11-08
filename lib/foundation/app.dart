@@ -12,7 +12,7 @@ export "state_controller.dart";
 export "navigation.dart";
 
 class _App {
-  final version = "2.1.3f";
+  final version = "2.2.0";
 
   bool get isAndroid => Platform.isAndroid;
   bool get isIOS => Platform.isIOS;
@@ -32,6 +32,10 @@ class _App {
         "简体中文" => const Locale("zh", "CN"),
         "繁體中文" => const Locale("zh", "TW"),
         "日本語" => const Locale("ja", "JP"),
+        "한국어" => const Locale("ko", "KR"),
+        "Español" => const Locale("es", "ES"),
+        "Русский" => const Locale("ru", "RU"),
+        "Indonesia" => const Locale("id", "ID"),
         _ => const Locale("en"),
       };
     }

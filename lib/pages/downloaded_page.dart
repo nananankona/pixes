@@ -31,13 +31,22 @@ class _DownloadedPageState extends State<DownloadedPage> {
   var illusts = <DownloadedIllust>[];
   var novels = <DownloadedNovel>[];
   var flyoutControllers = <FlyoutController>[];
+  var novelTexts = <String, String>{};
 
   bool showNovels = false;
   String query = "";
+  int _illustLimit = 50;
 
   void loadData() {
     illusts = DownloadManager().listAll();
     novels = DownloadManager().listNovels();
+    novelTexts = {};
+    for (final n in novels) {
+      try {
+        novelTexts[n.filePath] =
+            File(n.filePath).readAsStringSync().toLowerCase();
+      } catch (_) {}
+    }
     flyoutControllers =
         List.generate(illusts.length, (index) => FlyoutController());
   }
@@ -65,7 +74,9 @@ class _DownloadedPageState extends State<DownloadedPage> {
     return novels
         .where((e) =>
             e.title.toLowerCase().contains(q) ||
-            e.novelId.toString().contains(q))
+            e.novelId.toString().contains(q) ||
+            (q.length >= 2 &&
+                (novelTexts[e.filePath]?.contains(q) ?? false)))
         .toList();
   }
 
@@ -189,18 +200,31 @@ class _DownloadedPageState extends State<DownloadedPage> {
     if (items.isEmpty) {
       return Center(child: Text("No results".tl));
     }
+    final total = items.length;
+    final view =
+        total > _illustLimit ? items.sublist(0, _illustLimit) : items;
     return GridViewWithFixedItemHeight(
-        itemCount: items.length,
+        itemCount: view.length + (view.length < total ? 1 : 0),
         itemHeight: 152,
         maxCrossAxisExtent: 742,
         builder: (context, index) {
-          var image = DownloadManager().getImage(items[index].illustId, 0);
+          if (index >= view.length) {
+            return Center(
+              child: Button(
+                child: Text("Load more".tl),
+                onPressed: () =>
+                    setState(() => _illustLimit += 50),
+              ),
+            );
+          }
+          final item = view[index];
+          var image = DownloadManager().getImage(item.illustId, 0);
           final isUgoiraZip =
               image != null && image.path.toLowerCase().endsWith('.zip');
           Widget? thumbnail;
           if (isUgoiraZip) {
             final cover = File(
-                '${File(image!.path).parent.path}/cover_${items[index].illustId}.jpg');
+                '${File(image!.path).parent.path}/cover_${item.illustId}.jpg');
             thumbnail = cover.existsSync()
                 ? AnimatedImage(
                     image: FileImage(cover),
@@ -225,15 +249,8 @@ class _DownloadedPageState extends State<DownloadedPage> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (isUgoiraZip) {
-                    App.rootNavigatorKey.currentContext?.to(() =>
-                        _DownloadedUgoiraViewPage(
-                            items[index].illustId, image!.path));
-                } else {
-                    App.rootNavigatorKey.currentContext?.to(() =>
-                        _DownloadedIllustViewPage(DownloadManager()
-                        .getImagePaths(items[index].illustId)));
-                }
+                context.to(() =>
+                    IllustPageWithId(item.illustId.toString()));
               },
               child: Row(
                 children: [
@@ -252,7 +269,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          items[index].title,
+                          item.title,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -262,7 +279,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          items[index].author,
+                          item.author,
                           style: const TextStyle(
                             fontSize: 12,
                           ),
@@ -270,7 +287,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          "${items[index].imageCount}P",
+                          "${item.imageCount}P",
                           style: const TextStyle(
                             fontSize: 12,
                           ),
@@ -280,19 +297,26 @@ class _DownloadedPageState extends State<DownloadedPage> {
                           children: [
                             const Spacer(),
                             Button(
-                              child: Text("Info".tl).fixWidth(42),
+                              child: Text("View".tl).fixWidth(42),
                               onPressed: () {
-                                context.to(() => IllustPageWithId(
-                                    items[index].illustId.toString()));
+                                if (isUgoiraZip) {
+                                    App.rootNavigatorKey.currentContext?.to(() =>
+                                        _DownloadedUgoiraViewPage(
+                                            item.illustId, image!.path));
+                                } else {
+                                    App.rootNavigatorKey.currentContext?.to(() =>
+                                        _DownloadedIllustViewPage(DownloadManager()
+                                        .getImagePaths(item.illustId)));
+                                }
                               },
                             ),
                             const SizedBox(width: 6),
                             FlyoutTarget(
-                              controller: flyoutControllers[illusts.indexOf(items[index])],
+                              controller: flyoutControllers[illusts.indexOf(item)],
                               child: Button(
                                 child: Text("Delete".tl).fixWidth(42),
                                 onPressed: () {
-                                  flyoutControllers[illusts.indexOf(items[index])].showFlyout(
+                                  flyoutControllers[illusts.indexOf(item)].showFlyout(
                                       navigatorKey:
                                           App.rootNavigatorKey.currentState,
                                       builder: (context) {
@@ -314,7 +338,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                                                 onPressed: () {
                                                   Flyout.of(context).close();
                                                   DownloadManager()
-                                                      .delete(items[index]);
+                                                      .delete(item);
                                                   setState(loadData);
                                                 },
                                                 child: Text('Yes'.tl),
