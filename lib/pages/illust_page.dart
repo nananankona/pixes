@@ -137,7 +137,9 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
                 return buildLast();
               }
               return IllustPage(illusts[index],
-                  nextPage: nextPage, previousPage: previousPage);
+                  nextPage: nextPage,
+                  previousPage: previousPage,
+                  autoDownloadOnInit: false);
             },
             onPageChanged: (value) => setState(() {
               page = value;
@@ -207,13 +209,18 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
 }
 
 class IllustPage extends StatefulWidget {
-  const IllustPage(this.illust, {this.nextPage, this.previousPage, super.key});
+  const IllustPage(this.illust,
+      {this.nextPage, this.previousPage, this.autoDownloadOnInit = true, super.key});
 
   final Illust illust;
 
   final void Function()? nextPage;
 
   final void Function()? previousPage;
+
+  /// Gallery sets this to false and triggers auto-download on page change
+  /// instead, so pre-built neighbors aren't downloaded.
+  final bool autoDownloadOnInit;
 
   static Map<String, UpdateFollowCallback> followCallbacks = {};
 
@@ -256,6 +263,9 @@ class _IllustPageState extends State<IllustPage> {
       });
     };
     HistoryManager().addHistory(widget.illust);
+    if (widget.autoDownloadOnInit) {
+      maybeAutoDownloadIllust(widget.illust);
+    }
     if (appdata.account!.user.isPremium) {
       IllustGalleryPage.cachedHistoryIds.add(widget.illust.id);
     }
@@ -1461,7 +1471,9 @@ class IllustPageWithId extends StatefulWidget {
 class _IllustPageWithIdState extends LoadingState<IllustPageWithId, Illust> {
   @override
   Widget buildContent(BuildContext context, Illust data) {
-    return IllustPage(data);
+    // Auto-download is triggered in loadData; disable the initState hook
+    // to avoid a duplicate check.
+    return IllustPage(data, autoDownloadOnInit: false);
   }
 
   @override

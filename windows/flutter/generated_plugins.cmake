@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  audioplayers_windows
   dynamic_color
   file_selector_windows
   screen_retriever_windows

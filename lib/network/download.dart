@@ -44,7 +44,11 @@ void maybeAutoDownloadIllust(Illust illust) {
   if (checkIllusts([illust]).isEmpty) return;
   final manager = DownloadManager();
   // Cap the auto queue so mass browsing doesn't flood downloads.
-  if (manager.tasks.length >= manager.maxConcurrentTasks * 3) return;
+  if (manager.tasks.length >= manager.maxConcurrentTasks * 3) {
+    Log.info("Download", "Auto download skipped (queue full): ${illust.id}");
+    return;
+  }
+  Log.info("Download", "Auto download started: ${illust.id}");
   manager.addDownloadingTask(illust);
 }
 
@@ -149,11 +153,12 @@ class DownloadingTask {
 
   int _retryCount = 0;
 
-  void _handleError(Object error) async{
+  void _handleError(Object e) async{
     _retryCount++;
     if(_retryCount > 3) {
       _stop = true;
-      error = error.toString();
+      error = e.toString();
+      Log.error("Download", "Download failed (id=${illust.id}): $e");
       return;
     }
     await Future.delayed(Duration(seconds: 1 << _retryCount));
