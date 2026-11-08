@@ -181,6 +181,17 @@ class MyApp extends StatelessWidget {
                 }
                 final iconColor =
                     iconColorSetting ?? customTextColor ?? colorScheme.onSurface;
+                final baseResources = brightness == Brightness.light
+                    ? const ResourceDictionary.light()
+                    : const ResourceDictionary.dark();
+                final patchedResources =
+                    (customTextColor != null || hasBg)
+                        ? _patchedResources(
+                            baseResources,
+                            textColor: customTextColor,
+                            fillOpacity: hasBg ? cardOpacity : null,
+                          )
+                        : null;
                 // Full-coverage text styling: fluent widgets use typography
                 // colors (not DefaultTextStyle), so override it directly.
                 Typography? customTypography;
@@ -236,6 +247,7 @@ theme: FluentThemeData(
                           ),
                           cardColor: cardTranslucent,
                           menuColor: menuTranslucent,
+                          resources: patchedResources,
                           typography: customTypography,
                           buttonTheme: hasBg
                               ? ButtonThemeData(
@@ -424,6 +436,96 @@ File? _backgroundFile() {
   } catch (_) {
     return null;
   }
+}
+
+/// Theme resource overrides: custom text color + translucent
+/// control fills (search boxes, buttons) when wallpaper is on.
+ResourceDictionary _patchedResources(
+  ResourceDictionary base, {
+  Color? textColor,
+  double? fillOpacity,
+}) {
+  return ResourceDictionary.raw(
+    textFillColorPrimary: textColor ?? base.textFillColorPrimary,
+    textFillColorSecondary: textColor != null ? textColor.withValues(alpha: base.textFillColorSecondary.a) : base.textFillColorSecondary,
+    textFillColorTertiary: textColor != null ? textColor.withValues(alpha: base.textFillColorTertiary.a) : base.textFillColorTertiary,
+    textFillColorDisabled: textColor != null ? textColor.withValues(alpha: base.textFillColorDisabled.a) : base.textFillColorDisabled,
+    textFillColorInverse: base.textFillColorInverse,
+    accentTextFillColorDisabled: base.accentTextFillColorDisabled,
+    textOnAccentFillColorSelectedText: base.textOnAccentFillColorSelectedText,
+    textOnAccentFillColorPrimary: base.textOnAccentFillColorPrimary,
+    textOnAccentFillColorSecondary: base.textOnAccentFillColorSecondary,
+    textOnAccentFillColorDisabled: base.textOnAccentFillColorDisabled,
+    controlFillColorDefault: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorDefault, fillOpacity) ?? base.controlFillColorDefault) : base.controlFillColorDefault,
+    controlFillColorSecondary: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorSecondary, fillOpacity) ?? base.controlFillColorSecondary) : base.controlFillColorSecondary,
+    controlFillColorTertiary: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorTertiary, fillOpacity) ?? base.controlFillColorTertiary) : base.controlFillColorTertiary,
+    controlFillColorDisabled: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorDisabled, fillOpacity) ?? base.controlFillColorDisabled) : base.controlFillColorDisabled,
+    controlFillColorTransparent: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorTransparent, fillOpacity) ?? base.controlFillColorTransparent) : base.controlFillColorTransparent,
+    controlFillColorInputActive: fillOpacity != null ? (Color.lerp(Colors.transparent, base.controlFillColorInputActive, fillOpacity) ?? base.controlFillColorInputActive) : base.controlFillColorInputActive,
+    controlStrongFillColorDefault: base.controlStrongFillColorDefault,
+    controlStrongFillColorDisabled: base.controlStrongFillColorDisabled,
+    controlSolidFillColorDefault: base.controlSolidFillColorDefault,
+    subtleFillColorTransparent: base.subtleFillColorTransparent,
+    subtleFillColorSecondary: base.subtleFillColorSecondary,
+    subtleFillColorTertiary: base.subtleFillColorTertiary,
+    subtleFillColorDisabled: base.subtleFillColorDisabled,
+    controlAltFillColorTransparent: base.controlAltFillColorTransparent,
+    controlAltFillColorSecondary: base.controlAltFillColorSecondary,
+    controlAltFillColorTertiary: base.controlAltFillColorTertiary,
+    controlAltFillColorQuarternary: base.controlAltFillColorQuarternary,
+    controlAltFillColorDisabled: base.controlAltFillColorDisabled,
+    controlOnImageFillColorDefault: base.controlOnImageFillColorDefault,
+    controlOnImageFillColorSecondary: base.controlOnImageFillColorSecondary,
+    controlOnImageFillColorTertiary: base.controlOnImageFillColorTertiary,
+    controlOnImageFillColorDisabled: base.controlOnImageFillColorDisabled,
+    accentFillColorDisabled: base.accentFillColorDisabled,
+    controlStrokeColorDefault: base.controlStrokeColorDefault,
+    controlStrokeColorSecondary: base.controlStrokeColorSecondary,
+    controlStrokeColorOnAccentDefault: base.controlStrokeColorOnAccentDefault,
+    controlStrokeColorOnAccentSecondary: base.controlStrokeColorOnAccentSecondary,
+    controlStrokeColorOnAccentTertiary: base.controlStrokeColorOnAccentTertiary,
+    controlStrokeColorOnAccentDisabled: base.controlStrokeColorOnAccentDisabled,
+    controlStrokeColorForStrongFillWhenOnImage: base.controlStrokeColorForStrongFillWhenOnImage,
+    cardStrokeColorDefault: base.cardStrokeColorDefault,
+    cardStrokeColorDefaultSolid: base.cardStrokeColorDefaultSolid,
+    controlStrongStrokeColorDefault: base.controlStrongStrokeColorDefault,
+    controlStrongStrokeColorDisabled: base.controlStrongStrokeColorDisabled,
+    surfaceStrokeColorDefault: base.surfaceStrokeColorDefault,
+    surfaceStrokeColorFlyout: base.surfaceStrokeColorFlyout,
+    surfaceStrokeColorInverse: base.surfaceStrokeColorInverse,
+    dividerStrokeColorDefault: base.dividerStrokeColorDefault,
+    focusStrokeColorOuter: base.focusStrokeColorOuter,
+    focusStrokeColorInner: base.focusStrokeColorInner,
+    cardBackgroundFillColorDefault: base.cardBackgroundFillColorDefault,
+    cardBackgroundFillColorSecondary: base.cardBackgroundFillColorSecondary,
+    smokeFillColorDefault: base.smokeFillColorDefault,
+    layerFillColorDefault: base.layerFillColorDefault,
+    layerFillColorAlt: base.layerFillColorAlt,
+    layerOnAcrylicFillColorDefault: base.layerOnAcrylicFillColorDefault,
+    layerOnAccentAcrylicFillColorDefault: base.layerOnAccentAcrylicFillColorDefault,
+    layerOnMicaBaseAltFillColorDefault: base.layerOnMicaBaseAltFillColorDefault,
+    layerOnMicaBaseAltFillColorSecondary: base.layerOnMicaBaseAltFillColorSecondary,
+    layerOnMicaBaseAltFillColorTertiary: base.layerOnMicaBaseAltFillColorTertiary,
+    layerOnMicaBaseAltFillColorTransparent: base.layerOnMicaBaseAltFillColorTransparent,
+    solidBackgroundFillColorBase: base.solidBackgroundFillColorBase,
+    solidBackgroundFillColorSecondary: base.solidBackgroundFillColorSecondary,
+    solidBackgroundFillColorTertiary: base.solidBackgroundFillColorTertiary,
+    solidBackgroundFillColorQuarternary: base.solidBackgroundFillColorQuarternary,
+    solidBackgroundFillColorTransparent: base.solidBackgroundFillColorTransparent,
+    solidBackgroundFillColorBaseAlt: base.solidBackgroundFillColorBaseAlt,
+    systemFillColorSuccess: base.systemFillColorSuccess,
+    systemFillColorCaution: base.systemFillColorCaution,
+    systemFillColorCritical: base.systemFillColorCritical,
+    systemFillColorNeutral: base.systemFillColorNeutral,
+    systemFillColorSolidNeutral: base.systemFillColorSolidNeutral,
+    systemFillColorAttentionBackground: base.systemFillColorAttentionBackground,
+    systemFillColorSuccessBackground: base.systemFillColorSuccessBackground,
+    systemFillColorCautionBackground: base.systemFillColorCautionBackground,
+    systemFillColorCriticalBackground: base.systemFillColorCriticalBackground,
+    systemFillColorNeutralBackground: base.systemFillColorNeutralBackground,
+    systemFillColorSolidAttentionBackground: base.systemFillColorSolidAttentionBackground,
+    systemFillColorSolidNeutralBackground: base.systemFillColorSolidNeutralBackground,
+  );
 }
 
 /// Convert a hex color string like "#RRGGBB" or "RRGGBB" to a [Color]
