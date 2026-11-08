@@ -329,7 +329,7 @@ class _SettingsPageState extends State<SettingsPage> {
     [4, "Search history limit"],
     [5, "Sync Settings"],
     [6, "Version"], [6, "Check for updates on startup"],
-    [6, "Github"], [6, "Telegram"], [6, "Logs"],
+    [6, "Github"], [6, "Twitter"], [6, "Logs"],
   ];
 
   List<List<dynamic>> get _settingMatches {
@@ -911,57 +911,61 @@ class _SettingsPageState extends State<SettingsPage> {
     return SliverToBoxAdapter(
       child: Column(
         children: [
-          // Hero header
+          // Hero header (theme-aware, same Card language as elsewhere)
           Card(
             margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
             padding: EdgeInsets.zero,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [accent.light, accent.dark],
-                ),
-              ),
-              child: Column(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              child: Row(
                 children: [
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                      color: accent.withValues(alpha: 0.12),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6), width: 2),
+                          color: accent.withValues(alpha: 0.4), width: 1.5),
                     ),
-                    child: const Icon(FluentIcons.picture, size: 36, color: Colors.white),
+                    child: Icon(FluentIcons.picture,
+                        size: 32, color: accent),
                   ),
-                  const SizedBox(height: 12),
-                  const Text("pixes",
-                      style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white)),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(10),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text("pixes",
+                                style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: accent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color:
+                                        accent.withValues(alpha: 0.4)),
+                              ),
+                              child: Text("v${App.version}",
+                                  style: TextStyle(
+                                      fontSize: 12, color: accent)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text("Unofficial Pixiv client".tl,
+                            style: const TextStyle(fontSize: 13)),
+                      ],
                     ),
-                    child: Text("v${App.version}",
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white)),
                   ),
-                  const SizedBox(height: 8),
-                  Text("Unofficial Pixiv client".tl,
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.9))),
                 ],
               ),
             ),
@@ -1028,14 +1032,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     launchUrlString("https://github.com/nananankona/pixes"),
               )),
           buildItem(
-              title: "Telegram",
-              subtitle: "t.me/venera_dev",
+              title: "Twitter",
+              subtitle: "@nananankona",
               action: IconButton(
                 icon: const Icon(
                   MdIcons.open_in_new,
                   size: 18,
                 ),
-                onPressed: () => launchUrlString("https://t.me/venera_dev"),
+                onPressed: () =>
+                    launchUrlString("https://twitter.com/nananankona"),
               )),
           buildItem(
               title: "Logs",

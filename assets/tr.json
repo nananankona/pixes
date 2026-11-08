@@ -324,7 +324,8 @@
         "Line break length": "换行字数",
         "Downloading update": "正在下载更新",
         "Download failed": "下载失败",
-        "Check now": "立即检查"
+        "Check now": "立即检查",
+        "Mirror": "镜像"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -651,7 +652,8 @@
         "Line break length": "換行字數",
         "Downloading update": "正在下載更新",
         "Download failed": "下載失敗",
-        "Check now": "立即檢查"
+        "Check now": "立即檢查",
+        "Mirror": "鏡像"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -965,7 +967,7 @@
         "Enter Password or PIN": "パスワードまたは PIN を入力",
         "Unlock": "解除",
         "Incorrect password/PIN": "パスワード/PIN が正しくありません",
-        "Lock App": "ロックアプリ",
+        "Lock App": "アプリをロック",
         "Password": "パスワード",
         "PIN": "PIN",
         "Export Data": "データをエクスポート",
@@ -1022,7 +1024,7 @@
         "Batch download": "一括ダウンロード",
         "Maximum number of downloads": "最大ダウンロード数",
         "Cancel": "キャンセル",
-        "Continue": "続行",
+        "Continue": "続ける",
         "Public": "公開",
         "All": "すべて",
         "Daily": "デイリー",
@@ -1042,7 +1044,7 @@
         "Edit": "編集",
         "Download": "ダウンロード",
         "Manage": "管理",
-        "About": "について",
+        "About": "アプリ情報",
         "Are you sure you want to logout?": "ログアウトしてもよろしいですか？",
         "Download Path": "ダウンロードパス",
         "Download subpath": "ダウンロードサブパス",
@@ -1060,7 +1062,7 @@
         "The first tag of the artwork": "作品の最初のタグ",
         "The second tag of the artwork": "作品の2番目のタグ",
         "Follow": "フォロー",
-        "Save to": "保存先",
+        "Save to": "ファイルに保存",
         "Filled with tags. The tags should be separated by a space. The tag in front has higher weight.": "タグを入力してください。タグはスペースで区切り、前のタグほど重みが高くなります。",
         "It is required to use the original name instead of the translated name.": "翻訳名ではなくオリジナル名を使用する必要があります。",
         "Some keywords will be replaced by the following rule:": "一部のキーワードは以下のルールで置き換えられます：",
@@ -1086,7 +1088,7 @@
         "Waiting for authentication. Please finished in the browser.": "認証を待っています。ブラウザで完了してください。",
         "Back": "戻る",
         "Logging in": "ログイン中",
-        "Browse": "ブラウズ",
+        "Browse": "閲覧",
         "Proxy": "プロキシ",
         "Appearance": "外観",
         "Language": "言語",
@@ -1202,7 +1204,7 @@
         "Sync failed ({code})": "同期失敗 ({code})",
         "Clear remote data?": "リモートデータを消去しますか？",
         "This deletes all sync data from the server except this device.": "このデバイスを除く全同期データをサーバーから削除します。",
-        "Clear": "消去",
+        "Clear": "クリア",
         "Failed": "失敗",
         "Remote data cleared": "リモートデータを消去しました",
         "Reset Device ID?": "デバイスIDをリセットしますか？",
@@ -1220,7 +1222,7 @@
         "Labels, titles, and descriptions": "タグ、タイトル、説明",
         "Include AI-generated works": "AI生成作品を含む",
         "Refresh": "更新",
-        "Press back again to exit": "もう一度戻るで終了します",
+        "Press back again to exit": "終了するにはもう一度戻ってください",
         "Preload images": "画像の先読み",
         "Off": "オフ",
         "Next page": "次のページ",
@@ -1328,7 +1330,9 @@
         "Line break length": "改行文字数",
         "Downloading update": "更新をダウンロード中",
         "Download failed": "ダウンロード失敗",
-        "Check now": "今すぐ確認"
+        "Check now": "今すぐ確認",
+        "Mirror": "ミラー",
+        "Telegram": "Twitter"
     },
     "es_ES": {
         "Search": "Buscar",
