@@ -153,6 +153,12 @@ jobs:
         distribution: 'oracle'
         java-version: '17'
 
+    - name: Setup Gradle with retry and cache
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: false
+        gradle-home-cache-cleanup: true
+
     - name: Decode and install certificate
       if: github.event.inputs.dev_build != 'true'
       env:
@@ -210,10 +216,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: install dependencies
-      run: |
-        choco install yq -y
 
     - uses: subosito/flutter-action@v2
       with:
