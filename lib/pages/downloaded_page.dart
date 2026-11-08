@@ -771,6 +771,7 @@ class _DownloadedNovelViewPage extends StatefulWidget {
 class _DownloadedNovelViewPageState extends State<_DownloadedNovelViewPage> {
   String text = "";
   bool loading = true;
+  String query = "";
 
   @override
   void initState() {
@@ -787,15 +788,119 @@ class _DownloadedNovelViewPageState extends State<_DownloadedNovelViewPage> {
     if (mounted) setState(() => loading = false);
   }
 
+  List<String> get _matches {
+    final q = query.trim();
+    if (q.isEmpty) return const [];
+    final lower = q.toLowerCase();
+    return text
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty && e.toLowerCase().contains(lower))
+        .toList();
+  }
+
+  Widget _highlighted(String paragraph, String q) {
+    final lower = paragraph.toLowerCase();
+    final needle = q.toLowerCase();
+    final spans = <TextSpan>[];
+    var i = 0;
+    while (true) {
+      final j = lower.indexOf(needle, i);
+      if (j < 0) {
+        spans.add(TextSpan(text: paragraph.substring(i)));
+        break;
+      }
+      if (j > i) spans.add(TextSpan(text: paragraph.substring(i, j)));
+      spans.add(TextSpan(
+        text: paragraph.substring(j, j + needle.length),
+        style: TextStyle(
+          backgroundColor:
+              FluentTheme.of(context).accentColor.withValues(alpha: 0.35),
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      i = j + needle.length;
+    }
+    return RichText(text: TextSpan(children: spans));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: TitleBar(title: widget.novel.title),
       content: loading
           ? const Center(child: ProgressRing())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: SelectableText(text),
+          : Column(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                  child: TextBox(
+                    placeholder: "Search in text".tl,
+                    onChanged: (v) => setState(() => query = v),
+                    suffix: query.isEmpty
+                        ? const Icon(FluentIcons.search, size: 14)
+                        : null,
+                  ),
+                ),
+                if (query.trim().isNotEmpty)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "${_matches.length} ${"matches".tl}",
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: query.trim().isEmpty
+                      ? SingleChildScrollView(
+                          padding: const EdgeInsets.all(16),
+                          child: SelectableText(text),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(12),
+                          itemCount: _matches.length,
+                          itemBuilder: (context, index) {
+                            final para = _matches[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  vertical: 4),
+                              padding: EdgeInsets.zero,
+                              child: ListTile(
+                                title: _highlighted(
+                                    para.length > 200
+                                        ? "${para.substring(0, 200)}…"
+                                        : para,
+                                    query.trim()),
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (c) => ContentDialog(
+                                      title: Text(
+                                          "${"Paragraph".tl} ${index + 1}"),
+                                      content: SingleChildScrollView(
+                                        child: SelectableText(para),
+                                      ),
+                                      actions: [
+                                        Button(
+                                          child: Text('Close'.tl),
+                                          onPressed: () =>
+                                              Navigator.of(c).pop(),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
     );
   }
