@@ -29,10 +29,15 @@ class DownloadedPage extends StatefulWidget {
 
 class _DownloadedPageState extends State<DownloadedPage> {
   var illusts = <DownloadedIllust>[];
+  var novels = <DownloadedNovel>[];
   var flyoutControllers = <FlyoutController>[];
+
+  bool showNovels = false;
+  String query = "";
 
   void loadData() {
     illusts = DownloadManager().listAll();
+    novels = DownloadManager().listNovels();
     flyoutControllers =
         List.generate(illusts.length, (index) => FlyoutController());
   }
@@ -41,6 +46,27 @@ class _DownloadedPageState extends State<DownloadedPage> {
   void initState() {
     loadData();
     super.initState();
+  }
+
+  List<DownloadedIllust> get filteredIllusts {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return illusts;
+    return illusts
+        .where((e) =>
+            e.title.toLowerCase().contains(q) ||
+            e.author.toLowerCase().contains(q) ||
+            e.illustId.toString().contains(q))
+        .toList();
+  }
+
+  List<DownloadedNovel> get filteredNovels {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return novels;
+    return novels
+        .where((e) =>
+            e.title.toLowerCase().contains(q) ||
+            e.novelId.toString().contains(q))
+        .toList();
   }
 
   @override
@@ -59,26 +85,122 @@ class _DownloadedPageState extends State<DownloadedPage> {
             },
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+          child: Row(
+            children: [
+              Button(
+                onPressed: showNovels
+                    ? () => setState(() => showNovels = false)
+                    : null,
+                child: Text("Illust".tl).fixWidth(56),
+              ),
+              const SizedBox(width: 6),
+              Button(
+                onPressed: showNovels
+                    ? null
+                    : () => setState(() => showNovels = true),
+                child: Text("Novel".tl).fixWidth(56),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextBox(
+                  placeholder: "Search".tl,
+                  onChanged: (v) => setState(() => query = v),
+                ),
+              ),
+            ],
+          ),
+        ),
         Expanded(
-          child: buildBody(),
+          child: showNovels ? buildNovelBody() : buildBody(),
         ),
       ],
     );
   }
 
+  Widget buildNovelBody() {
+    final items = filteredNovels;
+    if (items.isEmpty) {
+      return Center(child: Text("No results".tl));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final novel = items[index];
+        final kb = (novel.fileSize / 1024).toStringAsFixed(1);
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            title: Text(novel.title,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text("${novel.novelId} - $kb KB"),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Button(
+                  child: Text("Open".tl).fixWidth(48),
+                  onPressed: () {
+                    context.to(
+                        () => _DownloadedNovelViewPage(novel));
+                  },
+                ),
+                const SizedBox(width: 6),
+                Button(
+                  child: Text("Delete".tl).fixWidth(48),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (c) => ContentDialog(
+                        title: Text('Are you sure you want to delete?'.tl),
+                        actions: [
+                          Button(
+                            child: Text('Cancel'.tl),
+                            onPressed: () => Navigator.of(c).pop(false),
+                          ),
+                          FilledButton(
+                            child: Text('Yes'.tl),
+                            onPressed: () => Navigator.of(c).pop(true),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true) {
+                      DownloadManager().deleteNovel(novel);
+                      setState(loadData);
+                    }
+                  },
+                ),
+              ],
+            ),
+            onPressed: () {
+              context.to(() => _DownloadedNovelViewPage(novel));
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildBody() {
+    final items = filteredIllusts;
+    if (items.isEmpty) {
+      return Center(child: Text("No results".tl));
+    }
     return GridViewWithFixedItemHeight(
-        itemCount: illusts.length,
+        itemCount: items.length,
         itemHeight: 152,
         maxCrossAxisExtent: 742,
         builder: (context, index) {
-          var image = DownloadManager().getImage(illusts[index].illustId, 0);
+          var image = DownloadManager().getImage(items[index].illustId, 0);
           final isUgoiraZip =
               image != null && image.path.toLowerCase().endsWith('.zip');
           Widget? thumbnail;
           if (isUgoiraZip) {
             final cover = File(
-                '${File(image!.path).parent.path}/cover_${illusts[index].illustId}.jpg');
+                '${File(image!.path).parent.path}/cover_${items[index].illustId}.jpg');
             thumbnail = cover.existsSync()
                 ? AnimatedImage(
                     image: FileImage(cover),
@@ -106,11 +228,11 @@ class _DownloadedPageState extends State<DownloadedPage> {
                 if (isUgoiraZip) {
                     App.rootNavigatorKey.currentContext?.to(() =>
                         _DownloadedUgoiraViewPage(
-                            illusts[index].illustId, image!.path));
+                            items[index].illustId, image!.path));
                 } else {
                     App.rootNavigatorKey.currentContext?.to(() =>
                         _DownloadedIllustViewPage(DownloadManager()
-                        .getImagePaths(illusts[index].illustId)));
+                        .getImagePaths(items[index].illustId)));
                 }
               },
               child: Row(
@@ -130,7 +252,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          illusts[index].title,
+                          items[index].title,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -140,7 +262,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          illusts[index].author,
+                          items[index].author,
                           style: const TextStyle(
                             fontSize: 12,
                           ),
@@ -148,7 +270,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          "${illusts[index].imageCount}P",
+                          "${items[index].imageCount}P",
                           style: const TextStyle(
                             fontSize: 12,
                           ),
@@ -161,16 +283,16 @@ class _DownloadedPageState extends State<DownloadedPage> {
                               child: Text("Info".tl).fixWidth(42),
                               onPressed: () {
                                 context.to(() => IllustPageWithId(
-                                    illusts[index].illustId.toString()));
+                                    items[index].illustId.toString()));
                               },
                             ),
                             const SizedBox(width: 6),
                             FlyoutTarget(
-                              controller: flyoutControllers[index],
+                              controller: flyoutControllers[illusts.indexOf(items[index])],
                               child: Button(
                                 child: Text("Delete".tl).fixWidth(42),
                                 onPressed: () {
-                                  flyoutControllers[index].showFlyout(
+                                  flyoutControllers[illusts.indexOf(items[index])].showFlyout(
                                       navigatorKey:
                                           App.rootNavigatorKey.currentState,
                                       builder: (context) {
@@ -192,12 +314,8 @@ class _DownloadedPageState extends State<DownloadedPage> {
                                                 onPressed: () {
                                                   Flyout.of(context).close();
                                                   DownloadManager()
-                                                      .delete(illusts[index]);
-                                                  setState(() {
-                                                    illusts.removeAt(index);
-                                                    flyoutControllers
-                                                        .removeAt(index);
-                                                  });
+                                                      .delete(items[index]);
+                                                  setState(loadData);
                                                 },
                                                 child: Text('Yes'.tl),
                                               ),
@@ -575,6 +693,49 @@ class __DownloadedUgoiraViewPageState
           ],
         );
       }),
+    );
+  }
+}
+
+class _DownloadedNovelViewPage extends StatefulWidget {
+  const _DownloadedNovelViewPage(this.novel);
+
+  final DownloadedNovel novel;
+
+  @override
+  State<_DownloadedNovelViewPage> createState() =>
+      _DownloadedNovelViewPageState();
+}
+
+class _DownloadedNovelViewPageState extends State<_DownloadedNovelViewPage> {
+  String text = "";
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      text = await File(widget.novel.filePath).readAsString();
+    } catch (_) {
+      text = "";
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaffoldPage(
+      header: TitleBar(title: widget.novel.title),
+      content: loading
+          ? const Center(child: ProgressRing())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: SelectableText(text),
+            ),
     );
   }
 }

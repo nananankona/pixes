@@ -36,6 +36,20 @@ class DownloadedIllust {
   });
 }
 
+class DownloadedNovel {
+  final int novelId;
+  final String title;
+  final String filePath;
+  final int fileSize;
+
+  DownloadedNovel({
+    required this.novelId,
+    required this.title,
+    required this.filePath,
+    required this.fileSize,
+  });
+}
+
 /// Auto-download on view. Called when an artwork/novel is actually displayed
 /// (not on pre-built neighbors). Respects private mode and block list.
 void maybeAutoDownloadIllust(Illust illust) {
@@ -402,6 +416,47 @@ class DownloadManager {
           author: e["author"] as String,
           imageCount: e["imageCount"] as int,
         )).toList();
+  }
+
+  /// Novels auto-saved as "$downloadPath/novel/<id>_<title>.txt".
+  List<DownloadedNovel> listNovels() {
+    try {
+      final downloadPath = appdata.settings["downloadPath"] as String?;
+      if (downloadPath == null || downloadPath.isEmpty) return [];
+      final dir = Directory("$downloadPath/novel");
+      if (!dir.existsSync()) return [];
+      final out = <DownloadedNovel>[];
+      for (final e in dir.listSync()) {
+        if (e is! File) continue;
+        if (!e.path.toLowerCase().endsWith('.txt')) continue;
+        try {
+          final name = e.path.split(RegExp(r'[/\\]')).last;
+          final stem = name.substring(0, name.length - 4);
+          final sep = stem.indexOf('_');
+          final id = sep > 0 ? int.tryParse(stem.substring(0, sep)) ?? 0 : 0;
+          var title = sep >= 0 ? stem.substring(sep + 1) : stem;
+          if (title.isEmpty) title = stem;
+          out.add(DownloadedNovel(
+            novelId: id,
+            title: title,
+            filePath: e.path,
+            fileSize: e.existsSync() ? e.lengthSync() : 0,
+          ));
+        } catch (_) {}
+      }
+      out.sort((a, b) => a.title.compareTo(b.title));
+      return out;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  void deleteNovel(DownloadedNovel novel) {
+    try {
+      File(novel.filePath).deleteIfExists();
+    } catch (e) {
+      Log.error("Download", "Failed to delete novel: $e");
+    }
   }
 
   void addDownloadingTask(Illust illust) {

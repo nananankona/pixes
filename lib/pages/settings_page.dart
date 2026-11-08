@@ -135,8 +135,81 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Widget _bgColorDot(BuildContext context, String? hex) {
+    final current = (appdata.settings["themeBackgroundColor"] as String?) ?? "";
+    final selected =
+        (hex == null && current.isEmpty) || (hex != null && hex.toUpperCase() == current.toUpperCase());
+    final color = hex == null
+        ? null
+        : _parseHexColor(hex) ?? FluentTheme.of(context).accentColor.normal;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          appdata.settings["themeBackgroundColor"] = hex ?? "";
+        });
+        appdata.writeData();
+        StateController.findOrNull(tag: "MyApp")?.update();
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          border: Border.all(
+            color: selected
+                ? FluentTheme.of(context).accentColor
+                : ColorScheme.of(context).outlineVariant,
+            width: selected ? 3 : 1,
+          ),
+        ),
+        child: hex == null
+            ? const Icon(FluentIcons.clear, size: 14)
+            : null,
+      ),
+    );
+  }
+
   @override
   int section = 0;
+
+  String settingsQuery = "";
+
+  static const _settingIndex = [
+    [0, "Logout"], [0, "Account Settings"], [0, "Hide Email"],
+    [0, "Hide Account Icon"], [0, "Hide Account Name"],
+    [1, "Initial Page"], [1, "Proxy"], [1, "Block(Account)"],
+    [1, "Block(Local)"], [1, "Shortcuts"],
+    [1, "Display the original image on the details page"],
+    [1, "Preload images"], [1, "Slideshow interval (seconds)"],
+    [1, "Loop slideshow"],
+    [1, "Emphasize artworks from following artists"],
+    [1, "Novel auto-scroll speed"], [1, "Illust auto-scroll speed"],
+    [1, "Auto advance to next artwork"],
+    [2, "Download Path"], [2, "Subpath"], [2, "Max parallels"],
+    [2, "Folder organization"], [2, "Auto download on view"],
+    [2, "Cache limit (MB)"], [2, "Clear image cache"],
+    [3, "Theme"], [3, "Accent color"], [3, "Background image"],
+    [3, "Background opacity"], [3, "Background color"],
+    [3, "Background blur"], [3, "Language"], [3, "Font"],
+    [4, "Lock App"], [4, "Password"], [4, "PIN"], [4, "Private Mode"],
+    [4, "Export Data"], [4, "Import Data"],
+    [4, "Search history limit"],
+    [5, "Sync Settings"],
+    [6, "Version"], [6, "Check for updates on startup"],
+    [6, "Github"], [6, "Telegram"], [6, "Logs"],
+  ];
+
+  List<List<dynamic>> get _settingMatches {
+    final q = settingsQuery.trim().toLowerCase();
+    if (q.isEmpty) return const [];
+    return _settingIndex.where((e) {
+      final title = (e[1] as String);
+      return title.toLowerCase().contains(q) ||
+          title.tl.toLowerCase().contains(q);
+    }).toList();
+  }
+
 
   static const _sectionTitles = [
     "Account",
@@ -192,27 +265,136 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.widthOf(context) < 640;
     return ScaffoldPage(
       padding: EdgeInsets.zero,
-      content: NavigationView(
-        pane: NavigationPane(
-          selected: section,
-          onChanged: (i) => setState(() => section = i),
-          displayMode: PaneDisplayMode.compact,
-          items: [
-            for (var i = 0; i < _sectionTitles.length; i++)
-              PaneItem(
-                icon: Icon(_sectionIcons[i], size: 18),
-                title: Text(_sectionTitles[i].tl),
-                body: const SizedBox.shrink(),
-              ),
-          ],
-        ),
-        paneBodyBuilder: (item, child) => CustomScrollView(
-          key: ValueKey(section),
-          slivers: _sectionSlivers(),
-        ),
+      content: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: TextBox(
+              placeholder: "Search settings".tl,
+              onChanged: (v) => setState(() => settingsQuery = v),
+            ),
+          ),
+          Expanded(
+            child: settingsQuery.trim().isNotEmpty
+                ? _buildSearchResults()
+                : (isNarrow ? _buildNarrowBody() : _buildWideBody()),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildWideBody() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 208,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: ListView.builder(
+            itemCount: _sectionTitles.length,
+            itemBuilder: (context, i) {
+              final selected = i == section;
+              return Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => section = i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? FluentTheme.of(context)
+                              .accentColor
+                              .withValues(alpha: 0.15)
+                          : null,
+                      borderRadius: BorderRadius.circular(6),
+                      border: selected
+                          ? Border.all(
+                              color: FluentTheme.of(context).accentColor)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(_sectionIcons[i], size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(_sectionTitles[i].tl)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const Divider(direction: Axis.vertical),
+        Expanded(
+          child: CustomScrollView(
+            key: ValueKey(section),
+            slivers: _sectionSlivers(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: DropDownButton(
+            title: Text(_sectionTitles[section].tl),
+            items: [
+              for (var i = 0; i < _sectionTitles.length; i++)
+                MenuFlyoutItem(
+                  text: Text(_sectionTitles[i].tl),
+                  onPressed: () => setState(() => section = i),
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: CustomScrollView(
+            key: ValueKey(section),
+            slivers: _sectionSlivers(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchResults() {
+    final matches = _settingMatches;
+    if (matches.isEmpty) {
+      return Center(child: Text("No results".tl));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      itemCount: matches.length,
+      itemBuilder: (context, i) {
+        final sec = matches[i][0] as int;
+        final title = matches[i][1] as String;
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            title: Text(title.tl),
+            subtitle: Text(_sectionTitles[sec].tl),
+            trailing: const Icon(FluentIcons.chevron_right, size: 14),
+            onPressed: () => setState(() {
+              section = sec;
+              settingsQuery = "";
+            }),
+          ),
+        );
+      },
     );
   }
 
@@ -871,9 +1053,34 @@ class _SettingsPageState extends State<SettingsPage> {
                       return;
                     }
                     if (file != null) {
-                      setState(() {
-                        appdata.settings["themeBackground"] = file!.path;
-                      });
+                      try {
+                        final ext = file!.name.contains('.')
+                            ? file!.name.split('.').last.toLowerCase()
+                            : 'png';
+                        final dest =
+                            File('${App.dataPath}/theme_background.$ext');
+                        await dest.writeAsBytes(await file!.readAsBytes());
+                        // Remove a stale copy with a different extension.
+                        for (final e in ['png', 'jpg', 'jpeg', 'webp']) {
+                          if (e == ext) continue;
+                          final stale =
+                              File('${App.dataPath}/theme_background.$e');
+                          if (await stale.exists()) {
+                            try {
+                              await stale.delete();
+                            } catch (_) {}
+                          }
+                        }
+                        if (!mounted) return;
+                        setState(() {
+                          appdata.settings["themeBackground"] = dest.path;
+                        });
+                      } catch (_) {
+                        if (!mounted) return;
+                        setState(() {
+                          appdata.settings["themeBackground"] = file!.path;
+                        });
+                      }
                       appdata.writeData();
                       StateController.findOrNull(tag: "MyApp")?.update();
                     }
@@ -886,7 +1093,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     padding: const EdgeInsets.only(left: 8),
                     child: Button(
                       child: Text("Clear".tl).fixWidth(64),
-                      onPressed: () {
+                      onPressed: () async {
+                        for (final e in ['png', 'jpg', 'jpeg', 'webp']) {
+                          final stale =
+                              File('${App.dataPath}/theme_background.$e');
+                          if (await stale.exists()) {
+                            try {
+                              await stale.delete();
+                            } catch (_) {}
+                          }
+                        }
                         setState(() {
                           appdata.settings["themeBackground"] = "";
                         });
@@ -916,6 +1132,78 @@ class _SettingsPageState extends State<SettingsPage> {
                 onChanged: (v) {
                   setState(() {
                     appdata.settings["themeBackgroundOpacity"] = v;
+                  });
+                  appdata.writeSettings();
+                  StateController.findOrNull(tag: "MyApp")?.update();
+                },
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Background color".tl, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _bgColorDot(context, null),
+                      for (final hex in [
+                        '#1E1E1E', '#2D2D30', '#0078D4', '#E81123',
+                        '#FF8C00', '#10893E', '#F5F5F5',
+                      ])
+                        _bgColorDot(context, hex),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Button(
+                        onPressed: () => _pickHexColor(
+                            "Background color".tl, "themeBackgroundColor"),
+                        child: Text("Custom".tl).fixWidth(64),
+                      ),
+                      const SizedBox(width: 8),
+                      Button(
+                        onPressed: () {
+                          setState(() {
+                            appdata.settings["themeBackgroundColor"] = "";
+                          });
+                          appdata.writeData();
+                          StateController.findOrNull(tag: "MyApp")?.update();
+                        },
+                        child: Text("Default".tl).fixWidth(64),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          buildItem(
+            title: "Background blur".tl,
+            subtitle: ((appdata.settings["themeBackgroundBlur"] as num?)
+                        ?.toDouble() ??
+                    0.0)
+                .toStringAsFixed(1),
+            action: SizedBox(
+              width: 160,
+              child: Slider(
+                value: ((appdata.settings["themeBackgroundBlur"] as num?)
+                        ?.toDouble() ??
+                    0.0)
+                    .clamp(0.0, 30.0),
+                min: 0.0,
+                max: 30.0,
+                onChanged: (v) {
+                  setState(() {
+                    appdata.settings["themeBackgroundBlur"] = v;
                   });
                   appdata.writeSettings();
                   StateController.findOrNull(tag: "MyApp")?.update();

@@ -128,7 +128,7 @@ class MyApp extends StatelessWidget {
                         md.ColorScheme.fromSeed(
                             seedColor: Colors.blue, brightness: brightness);
                 final bgFile = _backgroundFile();
-                final hasBg = bgFile != null;
+                bool hasBg = bgFile != null;
                 Color accentBase;
                 try {
                   final custom = appdata.settings["accentColor"] as String?;
@@ -136,6 +136,15 @@ class MyApp extends StatelessWidget {
                 } catch (_) {
                   accentBase = colorScheme.primary;
                 }
+                Color? bgTint;
+                try {
+                  final customBg = appdata.settings["themeBackgroundColor"] as String?;
+                  bgTint = (customBg != null && customBg.isNotEmpty) ? _hexToColor(customBg) : null;
+                } catch (_) {
+                  bgTint = null;
+                }
+                final bgBlur = ((appdata.settings["themeBackgroundBlur"] as num?)?.toDouble() ?? 0.0).clamp(0.0, 30.0);
+                hasBg = hasBg || bgTint != null;
 return FluentApp(
                      navigatorKey: App.rootNavigatorKey,
                      debugShowCheckedModeBanner: false,
@@ -144,6 +153,9 @@ theme: FluentThemeData(
                           brightness: brightness,
                           scaffoldBackgroundColor: hasBg ? Colors.transparent : null,
                           micaBackgroundColor: hasBg ? Colors.transparent : null,
+                          navigationPaneTheme: NavigationPaneThemeData(
+                            backgroundColor: hasBg ? Colors.transparent : null,
+                          ),
                           fontFamily: _getCustomFont() ?? (App.isWindows ? "Microsoft YaHei UI" : null),
                           // apply primary color from settings if provided
                           accentColor: AccentColor.swatch({
@@ -213,16 +225,30 @@ style: TextStyle(
                         
 
 
-                       if (bgFile != null) {
+                       if (bgFile != null || bgTint != null) {
                           final bgOpacity = ((appdata.settings["themeBackgroundOpacity"] as num?)?.toDouble() ?? 0.5).clamp(0.05, 1.0);
+                          Widget bgLayer = bgTint != null
+                              ? Container(color: bgTint)
+                              : const SizedBox.shrink();
+                          if (bgFile != null) {
+                            Widget bgImage = Image.file(bgFile, fit: BoxFit.cover);
+                            if (bgBlur > 0.01) {
+                              bgImage = ImageFiltered(
+                                imageFilter: ImageFilter.blur(sigmaX: bgBlur, sigmaY: bgBlur),
+                                child: bgImage,
+                              );
+                            }
+                            bgImage = Opacity(opacity: bgOpacity, child: bgImage);
+                            bgLayer = Stack(
+                              children: [
+                                bgLayer,
+                                Positioned.fill(child: bgImage),
+                              ],
+                            );
+                          }
                           widget = Stack(
                             children: [
-                              Positioned.fill(
-                                child: Opacity(
-                                  opacity: bgOpacity,
-                                  child: Image.file(bgFile, fit: BoxFit.cover),
-                                ),
-                              ),
+                              Positioned.fill(child: bgLayer),
                               Positioned.fill(child: widget),
                             ],
                           );
