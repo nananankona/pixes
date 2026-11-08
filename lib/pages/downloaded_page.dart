@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -34,10 +35,42 @@ class _DownloadedPageState extends State<DownloadedPage> {
   var flyoutControllers = <FlyoutController>[];
   var novelTexts = <String, String>{};
 
+  String statsText = "";
+
   bool showNovels = false;
   String query = "";
   int _illustLimit = 50;
   int _novelLimit = 50;
+
+  Future<void> _updateStats() async {
+    try {
+      var imgCount = 0;
+      var bytes = 0;
+      for (final it in illusts) {
+        imgCount += it.imageCount;
+        try {
+          for (final path in DownloadManager().getImagePaths(it.illustId)) {
+            final f = File(path);
+            if (await f.exists()) bytes += await f.length();
+          }
+        } catch (_) {}
+      }
+      for (final n in novels) {
+        bytes += n.fileSize;
+      }
+      final sizeStr = bytes >= 1024 * 1024 * 1024
+          ? (bytes / (1024 * 1024 * 1024)).toStringAsFixed(2) + " GB"
+          : (bytes / (1024 * 1024)).toStringAsFixed(1) + " MB";
+      if (mounted) {
+        setState(() {
+          statsText = illusts.length.toString() + " works / " +
+              imgCount.toString() + " images / " +
+              novels.length.toString() + " novels / " +
+              sizeStr;
+        });
+      }
+    } catch (_) {}
+  }
 
   void loadData() {
     illusts = DownloadManager().listAll();
@@ -70,6 +103,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
     }
     flyoutControllers =
         List.generate(illusts.length, (index) => FlyoutController());
+    unawaited(_updateStats());
   }
 
   @override
@@ -145,6 +179,14 @@ class _DownloadedPageState extends State<DownloadedPage> {
             ],
           ),
         ),
+        if (statsText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(statsText, style: const TextStyle(fontSize: 12)),
+            ),
+          ),
         Expanded(
           child: showNovels ? buildNovelBody() : buildBody(),
         ),
@@ -165,13 +207,20 @@ class _DownloadedPageState extends State<DownloadedPage> {
       itemCount: view.length + (view.length < total ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= view.length) {
-          return Center(
+          if (view.length < total) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _novelLimit < total) {
+                setState(() => _novelLimit += 50);
+              }
+            });
+          }
+          return const Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Button(
-                child: Text("Load more".tl),
-                onPressed: () =>
-                    setState(() => _novelLimit += 50),
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: ProgressRing(strokeWidth: 2),
               ),
             ),
           );
@@ -246,11 +295,18 @@ class _DownloadedPageState extends State<DownloadedPage> {
         maxCrossAxisExtent: 742,
         builder: (context, index) {
           if (index >= view.length) {
-            return Center(
-              child: Button(
-                child: Text("Load more".tl),
-                onPressed: () =>
-                    setState(() => _illustLimit += 50),
+            if (view.length < total) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && _illustLimit < total) {
+                  setState(() => _illustLimit += 50);
+                }
+              });
+            }
+            return const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: ProgressRing(strokeWidth: 2),
               ),
             );
           }
@@ -265,6 +321,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
             thumbnail = cover.existsSync()
                 ? AnimatedImage(
                     image: FileImage(cover),
+                    cacheWidth: 192,
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
@@ -274,6 +331,7 @@ class _DownloadedPageState extends State<DownloadedPage> {
           } else if (image != null) {
             thumbnail = AnimatedImage(
               image: FileImage(image),
+              cacheWidth: 192,
               fit: BoxFit.cover,
               width: double.infinity,
               height: double.infinity,

@@ -335,7 +335,8 @@
         "OK": "确定",
         "Search in text": "正文内搜索",
         "matches": "条匹配",
-        "Paragraph": "段落"
+        "Paragraph": "段落",
+        "View without history": "不留记录打开"
     },
     "zh_TW": {
         "Login with saved credentials": "使用已保存的憑據登入",
@@ -673,7 +674,8 @@
         "OK": "確定",
         "Search in text": "正文內搜尋",
         "matches": "條相符",
-        "Paragraph": "段落"
+        "Paragraph": "段落",
+        "View without history": "不留記錄開啟"
     },
     "ko_KR": {
         "Login with saved credentials": "저장된 자격 증명으로 로그인",
@@ -1362,7 +1364,8 @@
         "OK": "OK",
         "Search in text": "本文内検索",
         "matches": "件ヒット",
-        "Paragraph": "段落"
+        "Paragraph": "段落",
+        "View without history": "履歴に残さず開く"
     },
     "es_ES": {
         "Search": "Buscar",

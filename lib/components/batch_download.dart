@@ -156,3 +156,168 @@ class _DownloadDialogState extends State<_DownloadDialog> {
     context.pop();
   }
 }
+
+class BatchNovelDownloadButton extends StatelessWidget {
+  const BatchNovelDownloadButton({super.key, required this.request});
+
+  final Future<Res<List<Novel>>> Function() request;
+
+  @override
+  Widget build(BuildContext context) {
+    return Button(
+      child: const Icon(
+        MdIcons.download,
+        size: 20,
+      ),
+      onPressed: () {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            barrierColor: Colors.transparent,
+            useRootNavigator: false,
+            builder: (context) => _NovelDownloadDialog(request));
+      },
+    );
+  }
+}
+
+class _NovelDownloadDialog extends StatefulWidget {
+  const _NovelDownloadDialog(this.request);
+
+  final Future<Res<List<Novel>>> Function() request;
+
+  @override
+  State<_NovelDownloadDialog> createState() => _NovelDownloadDialogState();
+}
+
+class _NovelDownloadDialogState extends State<_NovelDownloadDialog> {
+  int maxCount = 30;
+
+  int currentCount = 0;
+
+  bool loading = false;
+
+  bool cancel = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: Text("Batch download".tl),
+      content: SizedBox(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!loading) Text('${"Maximum number of downloads".tl}:'),
+            if (loading) Text("${"Current quantity".tl}: $currentCount"),
+            const SizedBox(
+              height: 16,
+            ),
+            SizedBox(
+              height: 42,
+              width: 196,
+              child: NumberBox(
+                value: maxCount,
+                onChanged: (value) {
+                  if (!loading) {
+                    setState(() => maxCount = value ?? maxCount);
+                  }
+                },
+                allowExpressions: true,
+                mode: SpinButtonPlacementMode.inline,
+                smallChange: 10,
+                largeChange: 30,
+                clearButton: false,
+              ),
+            ),
+          ],
+        ).paddingVertical(8),
+      ),
+      actions: [
+        Button(
+            child: Text("Cancel".tl),
+            onPressed: () {
+              cancel = true;
+              context.pop();
+            }),
+        if (!loading)
+          FilledButton(onPressed: load, child: Text("Continue".tl))
+        else
+          FilledButton(
+              onPressed: () {},
+              child: const SizedBox(
+                height: 20,
+                width: 64,
+                child: Center(
+                  child: SizedBox.square(
+                    dimension: 18,
+                    child: ProgressRing(
+                      strokeWidth: 1.6,
+                    ),
+                  ),
+                ),
+              ))
+      ],
+    );
+  }
+
+  void load() async {
+    setState(() {
+      loading = true;
+    });
+
+    var request = widget.request();
+
+    List<Novel> all = [];
+    String? nextUrl;
+    int retryCount = 0;
+    while (nextUrl != "end" && all.length < maxCount) {
+      if (nextUrl != null) {
+        request = Network().getNovelsWithNextUrl(nextUrl);
+      }
+      var res = await request;
+      if (cancel || !mounted) {
+        return;
+      }
+      if (res.error) {
+        retryCount++;
+        if (retryCount > 3) {
+          setState(() {
+            loading = false;
+          });
+          showToast(context, message: "Error".tl);
+          return;
+        }
+        await Future.delayed(Duration(seconds: 1 << retryCount));
+        continue;
+      }
+      all.addAll(res.data);
+      setState(() {
+        currentCount = all.length;
+      });
+      nextUrl = res.subData ?? "end";
+    }
+    int i = 0;
+    for (final novel in all) {
+      if (cancel || !mounted) return;
+      if (i >= maxCount) break;
+      try {
+        final contentRes =
+            await Network().getNovelContent(novel.id.toString());
+        if (!contentRes.error) {
+          await saveDownloadedNovel(novel, contentRes.data);
+        }
+      } catch (_) {}
+      i++;
+      if (mounted) {
+        setState(() {
+          currentCount = i;
+        });
+      }
+    }
+    if (mounted) {
+      context.pop();
+      showToast(context, message: "Done".tl);
+    }
+  }
+}

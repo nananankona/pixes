@@ -42,6 +42,7 @@ class IllustGalleryPage extends StatefulWidget {
       {required this.illusts,
       required this.initialPage,
       this.nextUrl,
+      this.recordHistory = true,
       super.key});
 
   final List<Illust> illusts;
@@ -49,6 +50,9 @@ class IllustGalleryPage extends StatefulWidget {
   final int initialPage;
 
   final String? nextUrl;
+
+  /// When false, viewing leaves no history (and no auto-download).
+  final bool recordHistory;
 
   static var cachedHistoryIds = <int>{};
 
@@ -80,7 +84,9 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
     });
     // The initially displayed page never triggers onPageChanged,
     // so trigger auto-download for it here.
-    if (widget.initialPage >= 0 && widget.initialPage < illusts.length) {
+    if (widget.recordHistory &&
+        widget.initialPage >= 0 &&
+        widget.initialPage < illusts.length) {
       maybeAutoDownloadIllust(illusts[widget.initialPage]);
     }
     super.initState();
@@ -145,12 +151,13 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
               return IllustPage(illusts[index],
                   nextPage: nextPage,
                   previousPage: previousPage,
-                  autoDownloadOnInit: false);
+                  autoDownloadOnInit: false,
+                  recordHistory: widget.recordHistory);
             },
             onPageChanged: (value) => setState(() {
               page = value;
               _precacheNextArtwork();
-              if (value < illusts.length) {
+              if (widget.recordHistory && value < illusts.length) {
                 maybeAutoDownloadIllust(illusts[value]);
               }
             }),
@@ -216,7 +223,11 @@ class _IllustGalleryPageState extends State<IllustGalleryPage> {
 
 class IllustPage extends StatefulWidget {
   const IllustPage(this.illust,
-      {this.nextPage, this.previousPage, this.autoDownloadOnInit = true, super.key});
+      {this.nextPage,
+      this.previousPage,
+      this.autoDownloadOnInit = true,
+      this.recordHistory = true,
+      super.key});
 
   final Illust illust;
 
@@ -227,6 +238,9 @@ class IllustPage extends StatefulWidget {
   /// Gallery sets this to false and triggers auto-download on page change
   /// instead, so pre-built neighbors aren't downloaded.
   final bool autoDownloadOnInit;
+
+  /// When false, viewing leaves no local history (and no auto-download).
+  final bool recordHistory;
 
   static Map<String, UpdateFollowCallback> followCallbacks = {};
 
@@ -286,12 +300,15 @@ class _IllustPageState extends State<IllustPage> {
         widget.illust.author.isFollowed = v;
       });
     };
-    HistoryManager().addHistory(widget.illust);
-    if (widget.autoDownloadOnInit) {
+    if (widget.recordHistory) {
+      HistoryManager().addHistory(widget.illust);
+    }
+    if (widget.recordHistory && widget.autoDownloadOnInit) {
       maybeAutoDownloadIllust(widget.illust);
     }
     _checkDownloadedChanges();
-    if (appdata.account!.user.isPremium) {
+    if (widget.recordHistory &&
+        appdata.account!.user.isPremium) {
       IllustGalleryPage.cachedHistoryIds.add(widget.illust.id);
     }
     super.initState();

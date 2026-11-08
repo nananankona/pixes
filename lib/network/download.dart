@@ -68,25 +68,33 @@ void maybeAutoDownloadIllust(Illust illust) {
   manager.addDownloadingTask(illust);
 }
 
-Future<void> maybeAutoDownloadNovel(Novel novel, String text) async {
-  final mode = appdata.settings["autoDownload"] as int? ?? 0;
-  if (mode != 2 && mode != 3) return;
-  if (appdata.settings["privateMode"] == true) return;
+/// Writes a novel body file. Returns true on success.
+Future<bool> saveDownloadedNovel(Novel novel, String text,
+    {bool overwrite = true}) async {
   try {
     final downloadPath = appdata.settings["downloadPath"] as String?;
-    if (downloadPath == null || downloadPath.isEmpty) return;
+    if (downloadPath == null || downloadPath.isEmpty) return false;
     final dir = Directory("$downloadPath/novel");
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     final safeTitle = novel.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final file = File("${dir.path}/${novel.id}_$safeTitle.txt");
-    if (await file.exists()) return;
+    if (await file.exists() && !overwrite) return true;
     await file.writeAsString(
         "${novel.title}\n${novel.author.name} (id:${novel.author.id})\n\n$text");
+    return true;
   } catch (e) {
-    Log.error("Download", "Auto novel save failed: $e");
+    Log.error("Download", "Novel save failed: $e");
+    return false;
   }
+}
+
+Future<void> maybeAutoDownloadNovel(Novel novel, String text) async {
+  final mode = appdata.settings["autoDownload"] as int? ?? 0;
+  if (mode != 2 && mode != 3) return;
+  if (appdata.settings["privateMode"] == true) return;
+  await saveDownloadedNovel(novel, text, overwrite: false);
 }
 
 class DownloadingTask {

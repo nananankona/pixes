@@ -12,7 +12,7 @@ import 'package:pixes/foundation/app.dart';
 import 'package:pixes/foundation/image_provider.dart';
 import 'package:pixes/network/network.dart';
 import 'package:pixes/pages/comments_page.dart';
-import 'package:pixes/pages/novel_reading_page.dart';
+import 'package:pixes/pages/search_page.dart';import 'package:pixes/pages/novel_reading_page.dart';
 import 'package:pixes/pages/search_page.dart';
 import 'package:pixes/pages/user_info_page.dart';
 import 'package:pixes/utils/app_links.dart';
@@ -368,73 +368,65 @@ class _NovelPageState extends State<NovelPage> {
                           context.to(() => NovelReadingPage(widget.novel));
                         }),
                     const SizedBox(width: 16),
-                    FlyoutTarget(
-                      controller: favoriteFlyout,
-                      child: Button(
-                        onPressed: favorite,
-                        child: Row(
-                          mainAxisAlignment: constrains.maxWidth > 420
-                              ? MainAxisAlignment.start
-                              : MainAxisAlignment.center,
-                          children: [
-                            if (isAddingFavorite)
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: ProgressRing(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            else if (widget.novel.isBookmarked)
-                              Icon(
-                                MdIcons.favorite,
-                                size: 18,
-                                color: ColorScheme.of(context).error,
-                              )
-                            else
-                              const Icon(MdIcons.favorite_outline, size: 18),
-                            if (constrains.maxWidth > 420)
-                              const SizedBox(width: 12),
-                            if (constrains.maxWidth > 420)
+                    Expanded(
+                      child: FlyoutTarget(
+                        controller: favoriteFlyout,
+                        child: Button(
+                          onPressed: favorite,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isAddingFavorite)
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: ProgressRing(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              else if (widget.novel.isBookmarked)
+                                Icon(
+                                  MdIcons.favorite,
+                                  size: 18,
+                                  color: ColorScheme.of(context).error,
+                                )
+                              else
+                                const Icon(MdIcons.favorite_outline, size: 18),
+                              const SizedBox(width: 8),
                               Flexible(
-                                child: Text("Favorite".tl,
+                                child: Text(
+                                    widget.novel.isBookmarked
+                                        ? "Bookmarked".tl
+                                        : "Favorite".tl,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis),
                               )
-                          ],
-                        )
-                            .fixWidth(shouldFillSpace
-                            ? width / 4 - 4 - kFluentButtonPadding
-                            : 64)
-                            .fixHeight(32),
+                            ],
+                          ).fixHeight(32),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Button(
-                        child: Row(
-                          mainAxisAlignment: constrains.maxWidth > 420
-                              ? MainAxisAlignment.start
-                              : MainAxisAlignment.center,
-                          children: [
-                            const Icon(MdIcons.comment, size: 18),
-                            if (constrains.maxWidth > 420)
-                              const SizedBox(width: 12),
-                            if (constrains.maxWidth > 420)
+                    Expanded(
+                      child: Button(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(MdIcons.comment, size: 18),
+                              const SizedBox(width: 8),
                               Flexible(
                                 child: Text("Comments".tl,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis),
                               )
-                          ],
-                        )
-                            .fixWidth(shouldFillSpace
-                                ? width / 4 - 4 - kFluentButtonPadding
-                                : 64)
-                            .fixHeight(32),
-                        onPressed: () {
-                          CommentsPage.show(context, widget.novel.id.toString(),
-                              isNovel: true);
-                        }),
+                            ],
+                          ).fixHeight(32),
+                          onPressed: () {
+                            CommentsPage.show(
+                                context, widget.novel.id.toString(),
+                                isNovel: true);
+                          }),
+                    ),
                   ],
                 );
               },
@@ -477,6 +469,9 @@ class _NovelPageState extends State<NovelPage> {
                     child: GestureDetector(
                       onTap: () {
                         context.to(() => SearchNovelResultPage(tag.name));
+                      },
+                      onLongPress: () {
+                        context.to(() => SearchResultPage(tag.name));
                       },
                       child: Container(
                         margin: const EdgeInsets.only(right: 8, bottom: 6),

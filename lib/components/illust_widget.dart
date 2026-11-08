@@ -278,6 +278,14 @@ class _IllustWidgetState extends State<IllustWidget> {
                   context.to(() => IllustPage(widget.illust));
                 }),
             MenuFlyoutItem(
+                text: Text("View without history".tl),
+                onPressed: () {
+                  context.to(() => IllustGalleryPage(
+                      illusts: [widget.illust],
+                      initialPage: 0,
+                      recordHistory: false));
+                }),
+            MenuFlyoutItem(
                 text: Text("Private Favorite".tl),
                 onPressed: () {
                   favorite("private");

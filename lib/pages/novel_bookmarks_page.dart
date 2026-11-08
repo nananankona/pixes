@@ -4,6 +4,7 @@ import 'package:pixes/components/grid.dart';
 import 'package:pixes/components/loading.dart';
 import 'package:pixes/components/novel.dart';
 import 'package:pixes/components/segmented_button.dart';
+import 'package:pixes/components/batch_download.dart';
 import 'package:pixes/components/title_bar.dart';
 import 'package:pixes/foundation/widget_utils.dart';
 import 'package:pixes/network/network.dart';
@@ -26,7 +27,14 @@ class _NovelBookmarksPageState
       children: [
         TitleBar(
           title: "Bookmarks".tl,
-          action: SegmentedButton(
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BatchNovelDownloadButton(
+                  request: () => Network().getBookmarkedNovels(
+                      appdata.account!.user.id, public)),
+              const SizedBox(width: 8),
+              SegmentedButton(
             options: [
               SegmentedButtonOption("public", "Public".tl),
               SegmentedButtonOption("private", "Private".tl),
@@ -40,6 +48,8 @@ class _NovelBookmarksPageState
               }
             },
             value: public ? "public" : "private",
+          ),
+            ],
           ),
         ),
         Expanded(
